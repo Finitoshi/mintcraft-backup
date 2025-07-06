@@ -1,5 +1,11 @@
 # MintCraft Changelog
 
+## [1.0.1] - 2025-01-06
+
+### 🔧 Bug Fixes
+- **IPFS CORS Configuration**: Fixed browser CORS issues with IPFS node for metadata uploads
+- **Network Connectivity**: Resolved "failed to fetch" errors during token creation process
+
 ## [1.0.0] - 2025-01-06
 
 ### 🚀 Initial Release - Devnet Ready
