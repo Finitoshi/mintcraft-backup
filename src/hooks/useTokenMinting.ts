@@ -2,11 +2,12 @@ import { useState, useCallback } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { SolanaTokenService, TokenConfig } from '@/lib/solana';
 import { TokenFormData } from '@/components/TokenForm';
 import { Token22Extension } from '@/components/Token22Extensions';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+
+// API Base URL - change this to your deployed API URL
+const API_BASE_URL = 'http://localhost:3001/api';
 
 export interface MintingStatus {
   step: 'idle' | 'uploading-image' | 'uploading-metadata' | 'creating-token' | 'success' | 'error';
@@ -41,37 +42,32 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
     try {
       let metadataUri = '';
 
-      // Upload to IPFS via edge function if image provided
+      // Upload to IPFS via API if image provided
       if (formData.imageFile) {
         setStatus({ step: 'uploading-image', message: 'Uploading image to IPFS...' });
 
-        // Convert file to base64
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1]); // Remove data:image/jpeg;base64, prefix
-          };
-        });
-        reader.readAsDataURL(formData.imageFile);
-        const imageData = await base64Promise;
+        const formDataToSend = new FormData();
+        formDataToSend.append('image', formData.imageFile);
+        formDataToSend.append('name', formData.name);
+        formDataToSend.append('symbol', formData.symbol);
+        formDataToSend.append('description', formData.description);
+        if (formData.maxWalletPercentage) {
+          formDataToSend.append('maxWalletPercentage', formData.maxWalletPercentage);
+        }
 
-        const { data: ipfsResult, error: ipfsError } = await supabase.functions.invoke('upload-to-ipfs', {
-          body: {
-            name: formData.name,
-            symbol: formData.symbol,
-            description: formData.description,
-            imageFile: {
-              name: formData.imageFile.name,
-              type: formData.imageFile.type,
-              data: imageData,
-            },
-            maxWalletPercentage: formData.maxWalletPercentage ? parseFloat(formData.maxWalletPercentage) : undefined,
-          },
+        const ipfsResponse = await fetch(`${API_BASE_URL}/upload-to-ipfs`, {
+          method: 'POST',
+          body: formDataToSend,
         });
 
-        if (ipfsError || !ipfsResult?.success) {
-          throw new Error(ipfsError?.message || ipfsResult?.error || 'IPFS upload failed');
+        if (!ipfsResponse.ok) {
+          throw new Error(`IPFS upload failed: ${ipfsResponse.statusText}`);
+        }
+
+        const ipfsResult = await ipfsResponse.json();
+        
+        if (!ipfsResult.success) {
+          throw new Error(ipfsResult.error || 'IPFS upload failed');
         }
 
         metadataUri = ipfsResult.metadataUri;
@@ -90,13 +86,13 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         extensions: {} as any,
       };
 
-      // Configure extensions
+      // Configure extensions  
       enabledExtensions.forEach(ext => {
         switch (ext.id) {
           case 'transfer-fee':
             tokenConfig.extensions.transferFee = {
               feeBasisPoints: 250, // 2.5%
-              maxFee: BigInt(1000 * Math.pow(10, tokenConfig.decimals)), // Max 1000 tokens
+              maxFee: (1000 * Math.pow(10, tokenConfig.decimals)).toString(), // Max 1000 tokens as string
               transferFeeConfigAuthority: publicKey.toBase58(),
               withdrawWithheldAuthority: publicKey.toBase58(),
             };
@@ -129,29 +125,43 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
 
       setStatus({ step: 'creating-token', message: 'Creating token on Solana...' });
 
-      // For now, create a placeholder transaction that the edge function can process
-      // In a full implementation, you'd build the actual transaction here
-      const placeholderTransaction = new Transaction();
-      const serializedTransaction = placeholderTransaction.serialize({ requireAllSignatures: false });
-
-      const { data: mintResult, error: mintError } = await supabase.functions.invoke('mint-token', {
-        body: {
+      // Call API to create token transaction
+      const mintResponse = await fetch(`${API_BASE_URL}/mint-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           tokenConfig,
           userPublicKey: publicKey.toBase58(),
-          signedTransaction: Buffer.from(serializedTransaction).toString('base64'),
           network,
           customRpcUrl,
-        },
+        }),
       });
 
-      if (mintError || !mintResult?.success) {
-        throw new Error(mintError?.message || mintResult?.error || 'Token minting failed');
+      if (!mintResponse.ok) {
+        throw new Error(`Token creation failed: ${mintResponse.statusText}`);
       }
+
+      const mintResult = await mintResponse.json();
+      
+      if (!mintResult.success) {
+        throw new Error(mintResult.error || 'Token creation failed');
+      }
+
+      // Deserialize and sign the transaction
+      const transaction = Transaction.from(Buffer.from(mintResult.transaction, 'base64'));
+      const signedTransaction = await signTransaction(transaction);
+      
+      // Send the signed transaction
+      const { connection } = useConnection();
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      await connection.confirmTransaction(signature, 'confirmed');
 
       setStatus({
         step: 'success',
         message: 'Token created successfully!',
-        txSignature: mintResult.signature,
+        txSignature: signature,
         mintAddress: mintResult.mintAddress,
       });
 
