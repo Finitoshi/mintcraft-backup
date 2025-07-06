@@ -6,12 +6,26 @@ import { WalletContextProvider } from '@/contexts/WalletContext';
 import { NetworkToggle } from '@/components/NetworkToggle';
 import { TokenForm, TokenFormData } from '@/components/TokenForm';
 import { Token22Extensions, Token22Extension } from '@/components/Token22Extensions';
+import { AdvancedFeatures, AdvancedFeature } from '@/components/AdvancedFeatures';
+import { CloneToken } from '@/components/CloneToken';
+import { AuthorityManager } from '@/components/AuthorityManager';
+import { FeeCalculator } from '@/components/FeeCalculator';
+import { TransactionPreview } from '@/components/TransactionPreview';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Coins, Hammer, Shield, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+const DEFAULT_ADVANCED_FEATURES: AdvancedFeature[] = [
+  { id: 'multi-asset-reflections', name: 'Multi-Asset Reflections', description: 'Withheld fees swap to SOL/USDC/BONK and auto-airdrop', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'medium' },
+  { id: 'dynamic-tax-bands', name: 'Dynamic Tax Bands', description: 'Fee % auto-adjusts by 24h volume or oracle price bands', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'high' },
+  { id: 've-lock-boosts', name: 'veLock Boosts', description: 'Lock tokens 1-52 weeks; weight = amount × time for voting/yield', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'medium' },
+  { id: 'rate-limiter', name: 'Rate Limiter', description: 'Throttle N tokens per address per block/minute', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'low' },
+  { id: 'jackpot-blocks', name: 'Jackpot Blocks', description: '1% tax funds pot; random buyer wins every X hours', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'medium' },
+];
 
 const DEFAULT_EXTENSIONS: Token22Extension[] = [
   {
@@ -91,6 +105,7 @@ const DEFAULT_EXTENSIONS: Token22Extension[] = [
 function MintCraftApp() {
   const [network, setNetwork] = useState<WalletAdapterNetwork>(WalletAdapterNetwork.Devnet);
   const [extensions, setExtensions] = useState<Token22Extension[]>(DEFAULT_EXTENSIONS);
+  const [advancedFeatures, setAdvancedFeatures] = useState<AdvancedFeature[]>(DEFAULT_ADVANCED_FEATURES);
   const [formData, setFormData] = useState<TokenFormData>({
     name: '',
     symbol: '',
@@ -182,22 +197,52 @@ function MintCraftApp() {
         </Card>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-8">
-            <TokenForm 
-              formData={formData} 
-              onFormChange={setFormData}
-              onImageUpload={handleImageUpload}
-            />
-          </div>
+        <Tabs defaultValue="basic" className="space-y-8">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="basic">Basic Setup</TabsTrigger>
+            <TabsTrigger value="advanced">Advanced Features</TabsTrigger>
+            <TabsTrigger value="clone">Clone Token</TabsTrigger>
+            <TabsTrigger value="authority">Authority</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+          </TabsList>
 
-          <div className="space-y-8">
-            <Token22Extensions 
-              extensions={extensions}
-              onExtensionToggle={handleExtensionToggle}
+          <TabsContent value="basic">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <TokenForm 
+                formData={formData} 
+                onFormChange={setFormData}
+                onImageUpload={handleImageUpload}
+              />
+              <div className="space-y-8">
+                <Token22Extensions 
+                  extensions={extensions}
+                  onExtensionToggle={handleExtensionToggle}
+                />
+                <FeeCalculator />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="advanced">
+            <AdvancedFeatures 
+              features={advancedFeatures}
+              onFeatureToggle={(id, enabled) => setAdvancedFeatures(prev => prev.map(f => f.id === id ? {...f, enabled} : f))}
+              onConfigChange={(id, config) => setAdvancedFeatures(prev => prev.map(f => f.id === id ? {...f, config} : f))}
             />
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="clone">
+            <CloneToken />
+          </TabsContent>
+
+          <TabsContent value="authority">
+            <AuthorityManager />
+          </TabsContent>
+
+          <TabsContent value="preview">
+            <TransactionPreview />
+          </TabsContent>
+        </Tabs>
 
         {/* Summary & Action */}
         <Card className="mt-8">
