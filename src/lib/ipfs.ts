@@ -51,13 +51,19 @@ export class IPFSService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
         
+        console.log('🔍 Testing CORS preflight...');
+        
         const response = await fetch(uploadUrl, {
           method: 'POST',
           body: formData,
           signal: controller.signal,
+          mode: 'cors', // Explicitly set CORS mode
         });
         
         clearTimeout(timeoutId);
+        
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
         if (!response.ok) {
           const errorText = await response.text();
