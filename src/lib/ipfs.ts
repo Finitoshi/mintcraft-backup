@@ -28,19 +28,30 @@ export class IPFSService {
    * Upload file to IPFS
    */
   async uploadFile(file: File): Promise<string> {
-    console.log('📤 Uploading file to IPFS:', file.name);
+    console.log('📤 Uploading file to IPFS:', file.name, 'to:', this.baseUrl);
+    
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      throw new Error(`File too large. Maximum size is ${maxSize / (1024 * 1024)}MB`);
+    }
     
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const response = await fetch(`${this.baseUrl}/api/v0/add`, {
+      const uploadUrl = `${this.baseUrl}/api/v0/add`;
+      console.log('🌐 IPFS upload URL:', uploadUrl);
+      
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error(`IPFS upload failed: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ IPFS upload failed:', response.status, errorText);
+        throw new Error(`IPFS upload failed: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -51,6 +62,9 @@ export class IPFSService {
       return ipfsUrl;
     } catch (error) {
       console.error('❌ IPFS upload error:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error(`Failed to connect to IPFS node at ${this.baseUrl}. Please check the URL and CORS settings.`);
+      }
       throw new Error(`Failed to upload to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
