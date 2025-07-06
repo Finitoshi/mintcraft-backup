@@ -162,7 +162,7 @@ function MintCraftApp() {
   const isFormValid = formData.name && formData.symbol && formData.supply && formData.decimals;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -193,15 +193,13 @@ function MintCraftApp() {
 
         {/* Main Content */}
         <Tabs defaultValue="basic" className="space-y-8">
-          <div className="minecraft-card p-2">
-            <div className="grid grid-cols-5 gap-1">
-              <TabsTrigger value="basic" className="minecraft-button text-xs">🔨 Craft</TabsTrigger>
-              <TabsTrigger value="advanced" className="minecraft-button text-xs">🧙 Enchant</TabsTrigger>
-              <TabsTrigger value="clone" className="minecraft-button text-xs">📋 Clone</TabsTrigger>
-              <TabsTrigger value="authority" className="minecraft-button text-xs">👑 Authority</TabsTrigger>
-              <TabsTrigger value="preview" className="minecraft-button text-xs">👁️ Preview</TabsTrigger>
-            </div>
-          </div>
+          <TabsList className="minecraft-card p-2 grid grid-cols-5 gap-1 bg-gray-800">
+            <TabsTrigger value="basic" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">🔨 Craft</TabsTrigger>
+            <TabsTrigger value="advanced" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">🧙 Enchant</TabsTrigger>
+            <TabsTrigger value="clone" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">📋 Clone</TabsTrigger>
+            <TabsTrigger value="authority" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">👑 Authority</TabsTrigger>
+            <TabsTrigger value="preview" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">👁️ Preview</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="basic">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
