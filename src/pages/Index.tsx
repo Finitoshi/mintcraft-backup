@@ -175,8 +175,6 @@ function MintCraftApp() {
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-mono">
             ⛏️ Forge advanced Solana SPL Token-2022 assets with custom extensions ⛏️
-            <br />
-            🔥 Built with Minecraft-style crafting mechanics 🔥
           </p>
         </div>
 
