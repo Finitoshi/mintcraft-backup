@@ -141,7 +141,14 @@ function MintCraftApp() {
   };
 
   const handleMintToken = async () => {
+    console.log('🔥 DEBUG: Starting token minting process...');
+    console.log('🔥 DEBUG: Connected wallet:', connected);
+    console.log('🔥 DEBUG: Form data:', formData);
+    console.log('🔥 DEBUG: Extensions:', extensions.filter(ext => ext.enabled));
+    console.log('🔥 DEBUG: Network:', network);
+    
     if (!connected) {
+      console.log('❌ DEBUG: Wallet not connected');
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet to mint tokens",
@@ -150,11 +157,24 @@ function MintCraftApp() {
       return;
     }
 
+    console.log('✅ DEBUG: Wallet connected, proceeding with mint...');
+    
     // Reset any previous status
     resetStatus();
     
-    // Call the real minting function
-    await mintToken(formData, extensions);
+    try {
+      console.log('🚀 DEBUG: Calling mintToken function...');
+      // Call the real minting function
+      await mintToken(formData, extensions);
+      console.log('✅ DEBUG: mintToken completed successfully');
+    } catch (error) {
+      console.error('❌ DEBUG: mintToken failed with error:', error);
+      toast({
+        title: "Minting Failed",
+        description: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
   };
 
   const isFormValid = formData.name && formData.symbol && formData.supply && formData.decimals;

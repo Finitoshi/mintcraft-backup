@@ -29,7 +29,14 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
     formData: TokenFormData,
     extensions: Token22Extension[]
   ) => {
+    console.log('🔥 DEBUG [useTokenMinting]: Starting mintToken callback');
+    console.log('🔥 DEBUG [useTokenMinting]: FormData:', formData);
+    console.log('🔥 DEBUG [useTokenMinting]: Extensions:', extensions);
+    console.log('🔥 DEBUG [useTokenMinting]: PublicKey:', publicKey?.toBase58());
+    console.log('🔥 DEBUG [useTokenMinting]: Network:', network);
+    
     if (!publicKey || !signTransaction) {
+      console.log('❌ DEBUG [useTokenMinting]: Wallet validation failed');
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet to mint tokens",
@@ -38,7 +45,10 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
       return;
     }
 
+    console.log('✅ DEBUG [useTokenMinting]: Wallet validation passed');
+
     try {
+      console.log('🔥 DEBUG [useTokenMinting]: Setting status to uploading-image');
       setStatus({ step: 'uploading-image', message: 'Uploading image to IPFS...' });
 
       const ipfsService = new IPFSService('https://api.ipfs.bitty.money'); // Your IPFS node
@@ -48,16 +58,24 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
 
       // Upload to IPFS if image provided
       if (formData.imageFile) {
-        metadataUri = await ipfsService.createAndUploadTokenMetadata(
-          formData.name,
-          formData.symbol,
-          formData.description,
-          formData.imageFile,
-          undefined,
-          formData.maxWalletPercentage ? parseFloat(formData.maxWalletPercentage) : undefined
-        );
-        
-        setStatus({ step: 'uploading-metadata', message: 'Metadata uploaded to IPFS' });
+        console.log('🔥 DEBUG [useTokenMinting]: Starting IPFS upload for image:', formData.imageFile.name);
+        try {
+          metadataUri = await ipfsService.createAndUploadTokenMetadata(
+            formData.name,
+            formData.symbol,
+            formData.description,
+            formData.imageFile,
+            undefined,
+            formData.maxWalletPercentage ? parseFloat(formData.maxWalletPercentage) : undefined
+          );
+          console.log('✅ DEBUG [useTokenMinting]: IPFS upload completed:', metadataUri);
+          setStatus({ step: 'uploading-metadata', message: 'Metadata uploaded to IPFS' });
+        } catch (ipfsError) {
+          console.error('❌ DEBUG [useTokenMinting]: IPFS upload failed:', ipfsError);
+          throw ipfsError;
+        }
+      } else {
+        console.log('🔥 DEBUG [useTokenMinting]: No image file provided, skipping IPFS upload');
       }
 
       // Build token configuration
