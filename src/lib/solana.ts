@@ -6,6 +6,7 @@ import {
   Transaction,
   clusterApiUrl,
   sendAndConfirmTransaction,
+  LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import {
   TOKEN_2022_PROGRAM_ID,
@@ -16,9 +17,13 @@ import {
   createInitializeNonTransferableMintInstruction,
   createInitializeDefaultAccountStateInstruction,
   createInitializeMintCloseAuthorityInstruction,
+  createAssociatedTokenAccountInstruction,
+  createMintToInstruction,
+  getAssociatedTokenAddressSync,
   getMintLen,
   ExtensionType,
   AccountState,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 
@@ -85,23 +90,50 @@ export class SolanaTokenService {
   }
 
   /**
-   * Create mint account with Token-2022 extensions
+   * Check SOL balance and validate transaction requirements
+   */
+  private async validateTransaction(payerWallet: PublicKey): Promise<void> {
+    const balance = await this.connection.getBalance(payerWallet);
+    const minRequired = 0.01 * LAMPORTS_PER_SOL; // Minimum 0.01 SOL required
+    
+    if (balance < minRequired) {
+      throw new Error(`Insufficient SOL balance. You have ${balance / LAMPORTS_PER_SOL} SOL, but need at least 0.01 SOL for transaction fees. Please fund your wallet from a Devnet faucet.`);
+    }
+    
+    console.log(`✅ SOL balance check passed: ${balance / LAMPORTS_PER_SOL} SOL`);
+  }
+
+  /**
+   * Create mint account with Token-2022 extensions and initial supply
    */
   async createMintWithExtensions(
     config: TokenConfig,
     payerWallet: PublicKey,
     signTransaction: (transaction: Transaction) => Promise<Transaction>
-  ): Promise<{ mintKeypair: Keypair; signature: string }> {
+  ): Promise<{ mintKeypair: Keypair; signature: string; associatedTokenAccount: PublicKey }> {
     console.log('🔨 Starting token creation process...', config);
+
+    // Validate SOL balance first
+    await this.validateTransaction(payerWallet);
 
     const mintKeypair = Keypair.generate();
     const mintSpace = this.calculateMintSpace(config.extensions);
     const mintLamports = await this.connection.getMinimumBalanceForRentExemption(mintSpace);
 
+    // Generate associated token account for initial minting
+    const associatedTokenAccount = getAssociatedTokenAddressSync(
+      mintKeypair.publicKey,
+      payerWallet,
+      false,
+      TOKEN_2022_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
     console.log('📊 Mint account details:', {
       address: mintKeypair.publicKey.toBase58(),
       space: mintSpace,
       rent: `${mintLamports / 1e9} SOL`,
+      associatedTokenAccount: associatedTokenAccount.toBase58(),
     });
 
     const transaction = new Transaction();
@@ -199,6 +231,35 @@ export class SolanaTokenService {
       )
     );
 
+    // Create associated token account for initial minting
+    console.log('🏦 Adding Associated Token Account instruction...');
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        payerWallet,
+        associatedTokenAccount,
+        payerWallet,
+        mintKeypair.publicKey,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    );
+
+    // Mint initial supply to creator
+    if (config.supply > 0) {
+      console.log('💰 Adding Mint To instruction for initial supply...');
+      const mintAmount = BigInt(config.supply) * BigInt(Math.pow(10, config.decimals));
+      transaction.add(
+        createMintToInstruction(
+          mintKeypair.publicKey,
+          associatedTokenAccount,
+          payerWallet,
+          mintAmount,
+          [],
+          TOKEN_2022_PROGRAM_ID
+        )
+      );
+    }
+
     // Get recent blockhash
     const { blockhash } = await this.connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
@@ -228,6 +289,7 @@ export class SolanaTokenService {
     return {
       mintKeypair,
       signature,
+      associatedTokenAccount,
     };
   }
 }

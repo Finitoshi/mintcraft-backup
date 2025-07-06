@@ -25,7 +25,7 @@ export class IPFSService {
   }
 
   /**
-   * Upload file to IPFS
+   * Upload file to IPFS with retry logic
    */
   async uploadFile(file: File): Promise<string> {
     console.log('📤 Uploading file to IPFS:', file.name, 'to:', this.baseUrl);
@@ -39,34 +39,56 @@ export class IPFSService {
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      const uploadUrl = `${this.baseUrl}/api/v0/add`;
-      console.log('🌐 IPFS upload URL:', uploadUrl);
-      
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData,
-      });
+    // Retry logic for IPFS uploads
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const uploadUrl = `${this.baseUrl}/api/v0/add`;
+        console.log(`🌐 IPFS upload attempt ${attempt}/${maxRetries} to:`, uploadUrl);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ IPFS upload failed:', response.status, errorText);
-        throw new Error(`IPFS upload failed: ${response.statusText} - ${errorText}`);
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ IPFS upload failed (attempt ${attempt}):`, response.status, errorText);
+          throw new Error(`IPFS upload failed: ${response.statusText} - ${errorText}`);
+        }
 
-      const result = await response.json();
-      const ipfsHash = result.Hash;
-      const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
-      
-      console.log('✅ File uploaded to IPFS:', ipfsUrl);
-      return ipfsUrl;
-    } catch (error) {
-      console.error('❌ IPFS upload error:', error);
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error(`Failed to connect to IPFS node at ${this.baseUrl}. Please check the URL and CORS settings.`);
+        const result = await response.json();
+        const ipfsHash = result.Hash;
+        const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+        
+        console.log('✅ File uploaded to IPFS:', ipfsUrl);
+        return ipfsUrl;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        console.error(`❌ IPFS upload error (attempt ${attempt}):`, lastError);
+        
+        if (attempt === maxRetries) break;
+        
+        // Wait before retry (exponential backoff)
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-      throw new Error(`Failed to upload to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+    
+    // All retries failed
+    if (lastError instanceof TypeError && lastError.message.includes('fetch')) {
+      throw new Error(`Failed to connect to IPFS node at ${this.baseUrl}. Please check the URL and CORS settings.`);
+    }
+    throw new Error(`Failed to upload to IPFS after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
   }
 
   /**

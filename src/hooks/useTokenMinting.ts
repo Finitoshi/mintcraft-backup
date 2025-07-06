@@ -135,7 +135,7 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
 
       toast({
         title: "🎉 Token Created Successfully!",
-        description: `Mint: ${result.mintKeypair.publicKey.toBase58().slice(0, 8)}... | View on Explorer: https://explorer.solana.com/address/${result.mintKeypair.publicKey.toBase58()}?cluster=${network}`,
+        description: `Mint: ${result.mintKeypair.publicKey.toBase58().slice(0, 8)}... | Initial supply minted to your wallet | View on Explorer: https://explorer.solana.com/address/${result.mintKeypair.publicKey.toBase58()}?cluster=${network}`,
       });
 
     } catch (error) {

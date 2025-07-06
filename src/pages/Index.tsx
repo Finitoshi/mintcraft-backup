@@ -330,8 +330,10 @@ function MintCraftApp() {
 }
 
 export default function Index() {
+  const [network] = useState<WalletAdapterNetwork>(WalletAdapterNetwork.Devnet);
+  
   return (
-    <WalletContextProvider network={WalletAdapterNetwork.Devnet}>
+    <WalletContextProvider network={network}>
       <MintCraftApp />
     </WalletContextProvider>
   );
