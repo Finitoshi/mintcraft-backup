@@ -41,7 +41,8 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
     try {
       setStatus({ step: 'uploading-image', message: 'Uploading image to IPFS...' });
 
-      const ipfsService = new IPFSService('https://api.ipfs.bitty.money'); // Your IPFS node
+      // Try multiple IPFS gateways for better reliability
+      const ipfsService = new IPFSService('https://api.pinata.cloud'); // More reliable IPFS service
       const tokenService = new SolanaTokenService(network, customRpcUrl);
 
       let metadataUri = '';
