@@ -80,7 +80,8 @@ export class IPFSService {
     symbol: string,
     description: string,
     imageFile?: File,
-    attributes?: Array<{ trait_type: string; value: string | number }>
+    attributes?: Array<{ trait_type: string; value: string | number }>,
+    maxWalletPercentage?: number
   ): Promise<string> {
     console.log('🏗️ Creating complete token metadata...');
 
@@ -92,22 +93,32 @@ export class IPFSService {
     }
 
     // Create metadata object
+    const baseAttributes = [
+      {
+        trait_type: 'Token Standard',
+        value: 'SPL Token-2022'
+      },
+      {
+        trait_type: 'Network',
+        value: 'Solana'
+      }
+    ];
+
+    // Add max wallet percentage if specified
+    if (maxWalletPercentage) {
+      baseAttributes.push({
+        trait_type: 'Max Wallet Percentage',
+        value: `${maxWalletPercentage}%`
+      });
+    }
+
     const metadata: TokenMetadata = {
       name,
       symbol,
       description,
       image: imageUrl,
       external_url: `https://mintcraft.app/token/${symbol}`,
-      attributes: attributes || [
-        {
-          trait_type: 'Token Standard',
-          value: 'SPL Token-2022'
-        },
-        {
-          trait_type: 'Network',
-          value: 'Solana'
-        }
-      ],
+      attributes: attributes || baseAttributes,
       properties: {
         files: imageFile ? [{
           uri: imageUrl,

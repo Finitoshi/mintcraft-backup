@@ -112,8 +112,9 @@ function MintCraftApp() {
     name: '',
     symbol: '',
     description: '',
-    supply: '',
+    supply: '1000000',
     decimals: '9',
+    maxWalletPercentage: '',
     imageFile: null,
   });
 

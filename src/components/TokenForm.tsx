@@ -12,6 +12,7 @@ export interface TokenFormData {
   description: string;
   supply: string;
   decimals: string;
+  maxWalletPercentage: string;
   imageFile: File | null;
 }
 
@@ -97,7 +98,7 @@ export function TokenForm({ formData, onFormChange, onImageUpload }: TokenFormPr
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <Label htmlFor="supply">Total Supply *</Label>
             <Input
@@ -123,6 +124,24 @@ export function TokenForm({ formData, onFormChange, onImageUpload }: TokenFormPr
               min="0"
               max="255"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="maxWalletPercentage">Max Wallet %</Label>
+            <Input
+              id="maxWalletPercentage"
+              type="number"
+              placeholder="5"
+              value={formData.maxWalletPercentage}
+              onChange={(e) => handleInputChange('maxWalletPercentage', e.target.value)}
+              className="border-2 focus:border-primary transition-colors"
+              min="0.01"
+              max="100"
+              step="0.01"
+            />
+            <p className="text-xs text-muted-foreground">
+              Max % of supply one wallet can hold
+            </p>
           </div>
         </div>
 

@@ -52,7 +52,9 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
           formData.name,
           formData.symbol,
           formData.description,
-          formData.imageFile
+          formData.imageFile,
+          undefined,
+          formData.maxWalletPercentage ? parseFloat(formData.maxWalletPercentage) : undefined
         );
         
         setStatus({ step: 'uploading-metadata', message: 'Metadata uploaded to IPFS' });
@@ -66,6 +68,7 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         symbol: formData.symbol,
         decimals: parseInt(formData.decimals),
         supply: parseInt(formData.supply),
+        maxWalletPercentage: formData.maxWalletPercentage ? parseFloat(formData.maxWalletPercentage) : undefined,
         authorities: {
           mintAuthority: publicKey,
           freezeAuthority: publicKey, // Default to wallet, can be revoked later

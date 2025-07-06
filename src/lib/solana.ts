@@ -27,6 +27,7 @@ export interface TokenConfig {
   symbol: string;
   decimals: number;
   supply: number;
+  maxWalletPercentage?: number;
   extensions: {
     transferFee?: {
       feeBasisPoints: number;
