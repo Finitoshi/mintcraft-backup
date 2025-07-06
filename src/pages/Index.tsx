@@ -16,8 +16,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Coins, Hammer, Shield, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTokenMinting } from '@/hooks/useTokenMinting';
 
 const DEFAULT_ADVANCED_FEATURES: AdvancedFeature[] = [
   { id: 'multi-asset-reflections', name: 'Multi-Asset Reflections', description: 'Withheld fees swap to SOL/USDC/BONK and auto-airdrop', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'medium' },
@@ -117,6 +119,9 @@ function MintCraftApp() {
 
   const { connected } = useWallet();
   const { toast } = useToast();
+  
+  // Use the real token minting hook
+  const { mintToken, status, resetStatus, isLoading } = useTokenMinting(network);
 
   const handleExtensionToggle = (extensionId: string, enabled: boolean) => {
     setExtensions(prev => 
@@ -127,15 +132,14 @@ function MintCraftApp() {
   };
 
   const handleImageUpload = (file: File) => {
-    // TODO: Upload to IPFS using user's node
-    console.log('Uploading to IPFS:', file.name);
+    console.log('Image selected for IPFS upload:', file.name);
     toast({
-      title: "Image uploaded",
-      description: `${file.name} will be uploaded to IPFS`,
+      title: "Image selected",
+      description: `${file.name} ready for IPFS upload`,
     });
   };
 
-  const handleMintToken = () => {
+  const handleMintToken = async () => {
     if (!connected) {
       toast({
         title: "Wallet not connected",
@@ -145,18 +149,11 @@ function MintCraftApp() {
       return;
     }
 
-    const enabledExtensions = extensions.filter(ext => ext.enabled);
+    // Reset any previous status
+    resetStatus();
     
-    console.log('Minting token:', {
-      network,
-      formData,
-      extensions: enabledExtensions,
-    });
-
-    toast({
-      title: "Token minting started",
-      description: `Creating ${formData.name} (${formData.symbol}) on ${network}`,
-    });
+    // Call the real minting function
+    await mintToken(formData, extensions);
   };
 
   const isFormValid = formData.name && formData.symbol && formData.supply && formData.decimals;
@@ -270,13 +267,56 @@ function MintCraftApp() {
           <div className="border-t-2 border-gray-600 my-6"></div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button 
-              className="minecraft-button bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3 text-lg disabled:opacity-50"
-              onClick={handleMintToken}
-              disabled={!isFormValid || !connected}
-            >
-              ⚒️ FORGE TOKEN ⚒️
-            </button>
+            <div className="space-y-4 flex-1 max-w-md">
+              {/* Progress indicator */}
+              {isLoading && (
+                <div className="minecraft-card p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin text-emerald-500">⚙️</div>
+                      <span className="font-mono text-sm">{status.message}</span>
+                    </div>
+                    <Progress 
+                      value={
+                        status.step === 'uploading-image' ? 25 :
+                        status.step === 'uploading-metadata' ? 50 :
+                        status.step === 'creating-token' ? 75 : 100
+                      } 
+                      className="h-2"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {/* Success message */}
+              {status.step === 'success' && status.mintAddress && (
+                <div className="minecraft-card p-4 bg-emerald-900/50 border-emerald-500">
+                  <div className="space-y-2 text-center">
+                    <div className="text-2xl">🎉</div>
+                    <p className="font-mono text-sm text-emerald-300">Token Forged Successfully!</p>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      Mint: {status.mintAddress.slice(0, 8)}...{status.mintAddress.slice(-4)}
+                    </p>
+                    <a 
+                      href={`https://explorer.solana.com/address/${status.mintAddress}?cluster=${network}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="minecraft-button text-xs !bg-emerald-600 hover:!bg-emerald-500"
+                    >
+                      🔍 View on Explorer
+                    </a>
+                  </div>
+                </div>
+              )}
+              
+              <button 
+                className="minecraft-button bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3 text-lg disabled:opacity-50 w-full"
+                onClick={handleMintToken}
+                disabled={!isFormValid || !connected || isLoading}
+              >
+                {isLoading ? "⚙️ FORGING..." : "⚒️ FORGE TOKEN ⚒️"}
+              </button>
+            </div>
             
             <button className="minecraft-button px-6 py-3">
               👁️ Preview Recipe
