@@ -2,47 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MintCraft Design System - Solana-themed colors and gradients
+/* MintCraft Design System - Minecraft-themed colors and gradients
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Minecraft Earth/Stone Background */
+    --background: 30 15% 94%;
+    --foreground: 30 8% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Stone/Cobblestone Cards */
+    --card: 210 8% 88%;
+    --card-foreground: 30 8% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 210 8% 88%;
+    --popover-foreground: 30 8% 15%;
 
-    --primary: 263 70% 60%;
-    --primary-foreground: 210 40% 98%;
+    /* Minecraft Emerald Green Primary */
+    --primary: 140 60% 45%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Stone Gray Secondary */
+    --secondary: 210 8% 82%;
+    --secondary-foreground: 30 8% 15%;
     
-    /* Solana-themed colors */
-    --solana-purple: 263 70% 60%;
-    --solana-green: 142 76% 36%;
-    --gradient-solana: linear-gradient(135deg, hsl(263 70% 60%), hsl(142 76% 36%));
-    --gradient-mint: linear-gradient(135deg, hsl(142 76% 36%), hsl(180 76% 36%));
+    /* Minecraft-themed colors */
+    --minecraft-emerald: 140 60% 45%;
+    --minecraft-dirt: 25 45% 35%;
+    --minecraft-stone: 210 8% 65%;
+    --minecraft-cobblestone: 210 10% 55%;
+    --minecraft-grass: 90 50% 40%;
+    --minecraft-wood: 30 35% 55%;
+    --minecraft-iron: 220 5% 70%;
+    --minecraft-fire: 15 90% 55%;
+    
+    /* Minecraft gradients */
+    --gradient-emerald: linear-gradient(135deg, hsl(140 60% 45%), hsl(140 60% 35%));
+    --gradient-stone: linear-gradient(135deg, hsl(210 8% 75%), hsl(210 8% 65%));
+    --gradient-dirt: linear-gradient(135deg, hsl(25 45% 40%), hsl(25 45% 30%));
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 8% 85%;
+    --muted-foreground: 30 8% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 90 50% 40%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 210 10% 75%;
+    --input: 0 0% 100%;
+    --ring: 140 60% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -62,39 +75,49 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark Minecraft Cave/Nether Theme */
+    --background: 25 25% 12%;
+    --foreground: 30 15% 85%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 25 20% 18%;
+    --card-foreground: 30 15% 85%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 25 20% 18%;
+    --popover-foreground: 30 15% 85%;
 
-    --primary: 263 70% 60%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 140 50% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 25 15% 25%;
+    --secondary-foreground: 30 15% 85%;
     
-    /* Dark mode Solana colors */
-    --solana-purple: 263 70% 65%;
-    --solana-green: 142 76% 40%;
-    --gradient-solana: linear-gradient(135deg, hsl(263 70% 65%), hsl(142 76% 40%));
-    --gradient-mint: linear-gradient(135deg, hsl(142 76% 40%), hsl(180 76% 40%));
+    /* Dark Minecraft colors */
+    --minecraft-emerald: 140 50% 50%;
+    --minecraft-dirt: 25 40% 25%;
+    --minecraft-stone: 210 8% 35%;
+    --minecraft-cobblestone: 210 10% 25%;
+    --minecraft-grass: 90 40% 30%;
+    --minecraft-wood: 30 30% 35%;
+    --minecraft-iron: 220 5% 45%;
+    --minecraft-fire: 15 85% 60%;
+    
+    /* Dark gradients */
+    --gradient-emerald: linear-gradient(135deg, hsl(140 50% 50%), hsl(140 50% 40%));
+    --gradient-stone: linear-gradient(135deg, hsl(210 8% 40%), hsl(210 8% 30%));
+    --gradient-dirt: linear-gradient(135deg, hsl(25 40% 30%), hsl(25 40% 20%));
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 25 15% 22%;
+    --muted-foreground: 30 10% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 90 40% 35%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 25 15% 30%;
+    --input: 25 20% 20%;
+    --ring: 140 50% 50%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -112,6 +135,47 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-mono;
+    background-image: 
+      radial-gradient(circle at 2px 2px, rgba(0,0,0,0.15) 1px, transparent 0);
+    background-size: 16px 16px;
+  }
+}
+
+/* Minecraft-style components */
+@layer components {
+  .minecraft-button {
+    @apply px-4 py-2 border-2 border-b-4 border-r-4;
+    @apply border-t-gray-300 border-l-gray-300 border-b-gray-600 border-r-gray-600;
+    @apply bg-gray-400 hover:bg-gray-300 active:border-b-2 active:border-r-2;
+    @apply active:translate-x-0.5 active:translate-y-0.5;
+    @apply transition-all duration-75 font-mono font-bold text-black;
+    background-image: linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.1) 50%, transparent 50%, transparent 75%, rgba(255,255,255,0.1) 75%);
+    background-size: 4px 4px;
+  }
+  
+  .minecraft-card {
+    @apply border-2 border-b-4 border-r-4;
+    @apply border-t-gray-300 border-l-gray-300 border-b-gray-600 border-r-gray-600;
+    @apply bg-gradient-to-br from-gray-300 to-gray-400;
+    background-image: 
+      linear-gradient(45deg, rgba(0,0,0,0.1) 25%, transparent 25%), 
+      linear-gradient(-45deg, rgba(0,0,0,0.1) 25%, transparent 25%), 
+      linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.1) 75%), 
+      linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.1) 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  }
+  
+  .minecraft-input {
+    @apply border-2 border-inset;
+    @apply border-gray-600 border-t-gray-800 border-l-gray-800;
+    @apply bg-gray-100 font-mono px-2 py-1;
+  }
+  
+  .pixelated {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
   }
 }

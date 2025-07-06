@@ -166,45 +166,42 @@ function MintCraftApp() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <Hammer className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent">
-              MintCraft
-            </h1>
+          <div className="flex items-center justify-center gap-6 mb-6">
+            <img 
+              src="/lovable-uploads/e7e41419-44a3-4432-9a79-b24a762f7696.png" 
+              alt="MintCraft Logo" 
+              className="w-24 h-24 pixelated"
+            />
           </div>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Forge advanced Solana SPL Token-2022 assets with custom extensions, 
-            hooks, and native integrations
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-mono">
+            ⛏️ Forge advanced Solana SPL Token-2022 assets with custom extensions ⛏️
+            <br />
+            🔥 Built with Minecraft-style crafting mechanics 🔥
           </p>
         </div>
 
         {/* Network & Wallet Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5" />
-              Network & Wallet
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <NetworkToggle network={network} onNetworkChange={setNetwork} />
-              <WalletMultiButton className="!bg-primary hover:!bg-primary/90" />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="minecraft-card p-6 mb-8">
+          <h3 className="flex items-center gap-2 font-bold text-lg mb-4 font-mono">
+            ⚡ Server & Wallet Connection
+          </h3>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <NetworkToggle network={network} onNetworkChange={setNetwork} />
+            <WalletMultiButton className="minecraft-button !bg-emerald-500 hover:!bg-emerald-400 !text-white !border-emerald-600" />
+          </div>
+        </div>
 
         {/* Main Content */}
         <Tabs defaultValue="basic" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="basic">Basic Setup</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced Features</TabsTrigger>
-            <TabsTrigger value="clone">Clone Token</TabsTrigger>
-            <TabsTrigger value="authority">Authority</TabsTrigger>
-            <TabsTrigger value="preview">Preview</TabsTrigger>
-          </TabsList>
+          <div className="minecraft-card p-2">
+            <div className="grid grid-cols-5 gap-1">
+              <TabsTrigger value="basic" className="minecraft-button text-xs">🔨 Craft</TabsTrigger>
+              <TabsTrigger value="advanced" className="minecraft-button text-xs">🧙 Enchant</TabsTrigger>
+              <TabsTrigger value="clone" className="minecraft-button text-xs">📋 Clone</TabsTrigger>
+              <TabsTrigger value="authority" className="minecraft-button text-xs">👑 Authority</TabsTrigger>
+              <TabsTrigger value="preview" className="minecraft-button text-xs">👁️ Preview</TabsTrigger>
+            </div>
+          </div>
 
           <TabsContent value="basic">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -245,55 +242,51 @@ function MintCraftApp() {
         </Tabs>
 
         {/* Summary & Action */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Token Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 border rounded-lg">
-                <Coins className="h-8 w-8 mx-auto text-primary mb-2" />
-                <div className="font-semibold">{formData.name || 'Token Name'}</div>
-                <div className="text-sm text-muted-foreground">{formData.symbol || 'SYMBOL'}</div>
-              </div>
-              
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-primary">
-                  {extensions.filter(ext => ext.enabled).length}
-                </div>
-                <div className="text-sm text-muted-foreground">Extensions Enabled</div>
-              </div>
-              
-              <div className="text-center p-4 border rounded-lg">
-                <Badge variant={network === WalletAdapterNetwork.Mainnet ? "default" : "secondary"}>
-                  {network === WalletAdapterNetwork.Mainnet ? "MAINNET" : "DEVNET"}
-                </Badge>
-                <div className="text-sm text-muted-foreground mt-1">Target Network</div>
-              </div>
+        <div className="minecraft-card p-6 mt-8">
+          <h3 className="flex items-center gap-2 font-bold text-lg mb-6 font-mono">
+            🛡️ Crafting Recipe Summary
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="minecraft-card text-center p-4">
+              <div className="text-4xl mb-2">🪙</div>
+              <div className="font-bold font-mono">{formData.name || 'Token Name'}</div>
+              <div className="text-sm text-muted-foreground font-mono">{formData.symbol || 'SYMBOL'}</div>
             </div>
-
-            <Separator className="my-6" />
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                onClick={handleMintToken}
-                disabled={!isFormValid || !connected}
+            
+            <div className="minecraft-card text-center p-4">
+              <div className="text-2xl font-bold text-primary font-mono">
+                {extensions.filter(ext => ext.enabled).length + advancedFeatures.filter(f => f.enabled).length}
+              </div>
+              <div className="text-sm text-muted-foreground font-mono">🔮 Enchantments</div>
+            </div>
+            
+            <div className="minecraft-card text-center p-4">
+              <Badge 
+                variant={network === WalletAdapterNetwork.Mainnet ? "default" : "secondary"}
+                className="font-mono"
               >
-                <Hammer className="h-4 w-4 mr-2" />
-                Mint Token
-              </Button>
-              
-              <Button variant="outline" size="lg">
-                Preview Transaction
-              </Button>
+                {network === WalletAdapterNetwork.Mainnet ? "🌍 MAINNET" : "🧪 DEVNET"}
+              </Badge>
+              <div className="text-sm text-muted-foreground mt-1 font-mono">Target Server</div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="border-t-2 border-gray-600 my-6"></div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button 
+              className="minecraft-button bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3 text-lg disabled:opacity-50"
+              onClick={handleMintToken}
+              disabled={!isFormValid || !connected}
+            >
+              ⚒️ FORGE TOKEN ⚒️
+            </button>
+            
+            <button className="minecraft-button px-6 py-3">
+              👁️ Preview Recipe
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
