@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { PublicKey, Transaction, Keypair } from '@solana/web3.js';
 import { TokenFormData } from '@/components/TokenForm';
 import { Token22Extension } from '@/components/Token22Extensions';
 import { useToast } from '@/hooks/use-toast';
+import { TransactionBuilder } from '@/lib/solana/transaction-builder';
 
 // API Base URL - change this to your deployed API URL
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -84,6 +85,10 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         supply: parseInt(formData.supply),
         metadataUri,
         extensions: {} as any,
+        authorities: {
+          mintAuthority: publicKey,
+          freezeAuthority: publicKey,
+        },
       };
 
       // Configure extensions  
@@ -93,21 +98,21 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
             tokenConfig.extensions.transferFee = {
               feeBasisPoints: 250, // 2.5%
               maxFee: (1000 * Math.pow(10, tokenConfig.decimals)).toString(), // Max 1000 tokens as string
-              transferFeeConfigAuthority: publicKey.toBase58(),
-              withdrawWithheldAuthority: publicKey.toBase58(),
+              transferFeeConfigAuthority: publicKey,
+              withdrawWithheldAuthority: publicKey,
             };
             break;
           
           case 'interest-bearing':
             tokenConfig.extensions.interestBearing = {
-              rateAuthority: publicKey.toBase58(),
+              rateAuthority: publicKey,
               rate: 500, // 5% APR in basis points
             };
             break;
           
           case 'permanent-delegate':
             tokenConfig.extensions.permanentDelegate = {
-              delegate: publicKey.toBase58(),
+              delegate: publicKey,
             };
             break;
           
@@ -117,7 +122,7 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
           
           case 'mint-close-authority':
             tokenConfig.extensions.mintCloseAuthority = {
-              closeAuthority: publicKey.toBase58(),
+              closeAuthority: publicKey,
             };
             break;
         }
@@ -125,36 +130,23 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
 
       setStatus({ step: 'creating-token', message: 'Creating token on Solana...' });
 
-      // Call API to create token transaction
-      const mintResponse = await fetch(`${API_BASE_URL}/mint-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tokenConfig,
-          userPublicKey: publicKey.toBase58(),
-          network,
-          customRpcUrl,
-        }),
-      });
+      const transactionBuilder = new TransactionBuilder();
+      const mintKeypair = Keypair.generate();
 
-      if (!mintResponse.ok) {
-        throw new Error(`Token creation failed: ${mintResponse.statusText}`);
-      }
+      const { transaction } = await transactionBuilder.buildTokenCreationTransaction(
+        connection,
+        tokenConfig,
+        publicKey,
+        mintKeypair
+      );
 
-      const mintResult = await mintResponse.json();
-      
-      if (!mintResult.success) {
-        throw new Error(mintResult.error || 'Token creation failed');
-      }
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
 
-      // Deserialize and sign the transaction
-      const transaction = Transaction.from(Buffer.from(mintResult.transaction, 'base64'));
       const signedTransaction = await signTransaction(transaction);
       
       // Send the signed transaction
-      const { connection } = useConnection();
       const signature = await connection.sendRawTransaction(signedTransaction.serialize());
       await connection.confirmTransaction(signature, 'confirmed');
 
@@ -162,12 +154,12 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         step: 'success',
         message: 'Token created successfully!',
         txSignature: signature,
-        mintAddress: mintResult.mintAddress,
+        mintAddress: mintKeypair.publicKey.toBase58(),
       });
 
       toast({
         title: "🎉 Token Created Successfully!",
-        description: `Mint: ${mintResult.mintAddress.slice(0, 8)}... | View on Explorer: https://explorer.solana.com/address/${mintResult.mintAddress}?cluster=${network}`,
+        description: `Mint: ${mintKeypair.publicKey.toBase58().slice(0, 8)}... | View on Explorer: https://explorer.solana.com/address/${mintKeypair.publicKey.toBase58()}?cluster=${network}`,
       });
 
     } catch (error) {
@@ -186,7 +178,7 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         variant: "destructive",
       });
     }
-  }, [publicKey, signTransaction, network, customRpcUrl, toast]);
+  }, [publicKey, signTransaction, network, customRpcUrl, toast, connection]);
 
   const resetStatus = useCallback(() => {
     setStatus({ step: 'idle', message: 'Ready to mint' });

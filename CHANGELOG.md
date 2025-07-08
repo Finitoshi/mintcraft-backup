@@ -1,87 +1,86 @@
 # MintCraft Changelog
 
-## [1.0.1] - 2025-01-06
+## [1.0.6] - 2025-07-07
 
-### 🔧 Bug Fixes
-- **IPFS CORS Configuration**: Fixed browser CORS issues with IPFS node for metadata uploads
-- **Network Connectivity**: Resolved "failed to fetch" errors during token creation process
+### Changed
 
-## [1.0.0] - 2025-01-06
+- **Anchor Program Dependencies:** Updated `anchor-lang`, `anchor-spl`, `spl-token`, `spl-associated-token-account`, `solana-program`, and `solana-sdk` versions in `programs/mintcraft/Cargo.toml` to align with Anchor 0.30.1 and Solana 1.18.17.
 
-### 🚀 Initial Release - Devnet Ready
+### Fixed
 
-#### Major Features Added
-- **Complete Token Creation Flow**: Tokens now mint initial supply to creator's wallet
-- **Browser Compatibility**: Added Vite polyfills for Solana web3.js compatibility
-- **Transaction Safety**: SOL balance validation and comprehensive error handling
-- **Enhanced IPFS Integration**: Retry logic, timeout handling, and better error messages
-- **Network Synchronization**: Dynamic network switching between Devnet/Mainnet
+- **IDL Generation & Build Issues:** Addressed persistent build failures and IDL generation issues.
+  - Attempted to resolve `proc_macro2::Span::source_file()` error by patching `time` and `ahash` dependencies in `~/.cargo/config.toml`.
+  - Attempted to resolve `getrandom`, `atty`, and `termcolor` compilation errors by configuring `getrandom` features and managing Rust toolchains.
+  - Cleaned Cargo cache and removed `target` directory multiple times to force clean builds.
+  - Cleaned up conflicting `PATH` entries in `~/.bashrc`.
 
-#### Technical Improvements
-- **Solana Token-2022 Extensions Support**:
-  - Transfer Fee with configurable rates
-  - Interest Bearing tokens
-  - Permanent Delegate authority
-  - Non-Transferable (Soulbound) tokens
-  - Default Account State management
-  - Mint Close Authority
-  - Confidential Transfers (UI ready)
-  - CPI Guard (UI ready)
-  - Transfer Hook (UI ready)
+### Technical Details
 
-- **Advanced Features Framework**:
-  - Multi-Asset Reflections
-  - Dynamic Tax Bands
-  - veLock Boosts
-  - Rate Limiter
-  - Jackpot Blocks
+- **Current Build Status:** `anchor build` continues to fail due to complex and persistent environment/dependency conflicts, particularly with `getrandom` and `cargo-build-sbf` resolution.
+- **Decision:** Due to intractable environment issues, the decision was made to move to a fresh Debian 11 WSL2 environment for a clean setup.
 
-- **Robust Error Handling**:
-  - SOL balance checks with helpful error messages
-  - IPFS connection validation with CORS guidance
-  - Transaction simulation and validation
-  - Retry logic for network operations
+## [1.0.5] - 2025-07-07
 
-#### UI/UX Enhancements
-- **Minecraft-themed Design System**: Pixelated components and retro gaming aesthetic
-- **Real-time Progress Tracking**: Visual feedback during token creation
-- **Network Toggle**: Easy switching between Devnet and Mainnet
-- **Comprehensive Token Preview**: Summary of all selected features and extensions
+### Changed
 
-#### Developer Experience
-- **Comprehensive Logging**: Detailed console output for debugging
-- **Type Safety**: Full TypeScript implementation
-- **Modular Architecture**: Clean separation of concerns
-- **Error Boundaries**: Graceful error handling throughout the app
+- **Anchor Program Dependencies:** Updated `spl-token` to `4.0.3` and `spl-associated-token-account` to `3.0.4` in `programs/mintcraft/Cargo.toml`.
 
-#### Dependencies
-- **Solana Web3.js**: v1.98.2
-- **SPL Token**: v0.4.13
-- **Wallet Adapter**: Complete integration with popular Solana wallets
-- **IPFS Integration**: Custom IPFS service with retry logic
+### Fixed
 
-#### Configuration
-- **IPFS Node**: Configured with api.ipfs.bitty.money
-- **Default Network**: Devnet (production-ready for testing)
-- **Wallet Support**: Phantom, Solflare, Torus
+- **IDL Generation & Build Issues:** Addressed persistent build failures and IDL generation issues.
+  - Updated `anchor-lang` and `anchor-spl` to `0.30.1` in `programs/mintcraft/Cargo.toml` to resolve version mismatch with Anchor CLI.
+  - Attempted to resolve `proc_macro2::Span::source_file()` error by explicitly adding `proc-macro2` dependency and clearing Cargo cache.
+  - Attempted to resolve `getrandom`, `atty`, and `termcolor` compilation errors by setting default Rust toolchain to `solana` and explicitly configuring `getrandom` features.
+  - Cleaned Cargo cache and removed `target` directory multiple times to force clean builds.
 
-#### Security Features
-- **Client-side Only**: No private keys stored or transmitted
-- **Wallet Integration**: Uses official Solana wallet adapters
-- **Input Validation**: Comprehensive form and file validation
-- **Network Isolation**: Clear separation between Devnet and Mainnet operations
+### Technical Details
 
-#### Known Limitations
-- **Mainnet Usage**: Requires real SOL for transaction fees
-- **IPFS Dependency**: Requires functional IPFS node for metadata storage
-- **Browser Requirements**: Modern browser with WebAssembly support needed
+- **Current Build Status:** `anchor build` continues to fail with `getrandom`, `atty`, and `termcolor` errors, and stack overflow warnings, despite toolchain and dependency updates.
 
-#### Next Steps
-- Test token creation on Devnet
-- Verify IPFS metadata upload functionality  
-- Test all Token-2022 extensions
-- Validate wallet integration across different wallet providers
+## [1.0.4] - 2025-01-15
 
----
+### Fixed
 
-**Ready for Testing**: This release is ready for comprehensive Devnet testing of all token creation features and extensions.
+- **Solana Toolchain Compatibility:** Resolved critical build issues with Anchor and Solana CLI compatibility
+  - Updated Anchor CLI from 0.29.0 to 0.30.1 to support Solana CLI 2.2.17's SBF toolchain
+  - Fixed compilation errors in `programs/mintcraft/src/lib.rs`:
+    - Added missing lifetime parameters to `Initialize` struct
+    - Removed deprecated `rent` field from `anchor_spl::associated_token::Create`
+    - Added required `Pack` trait import for `SplMint::LEN`
+    - Removed unused imports (`Mint`, `TokenAccount`)
+  - **Root Cause:** Anchor 0.29.0 was incompatible with Solana CLI 2.2.17's new SBF (Solana Bytecode Format) toolchain, causing "build-bpf not found" errors
+  - **Solution:** Used AVM (Anchor Version Manager) to install and build Anchor 0.30.1 from source, ensuring compatibility with the SBF toolchain
+
+### Technical Details
+
+- **Before:** `anchor build` failed with "no such command: build-bpf" error
+- **After:** `anchor build` successfully uses the new SBF toolchain (`cargo-build-sbf`)
+- **Tools Used:** AVM (Anchor Version Manager) for version management
+- **Build System:** Now properly uses Solana's SBF (Solana Bytecode Format) instead of deprecated BPF
+
+## [1.0.3] - 2025-07-07
+
+### Refactored
+
+- **Client-Side Minting:** Refactored the token minting process to be fully client-side. The backend is no longer used for transaction building, only for IPFS uploads.
+- **Removed `/api/mint-token`:** Deleted the unused backend endpoint for token minting.
+
+### Added
+
+- **Anchor `create_token` Instruction:** Added a basic `create_token` instruction and associated structs to `programs/mintcraft/src/lib.rs` as a starting point for on-chain token creation.
+- **Frontend Testing:** Implemented Vitest for frontend unit testing.
+- **`useTokenMinting` Test:** Added a comprehensive test suite for the `useTokenMinting` hook to ensure client-side minting logic is sound.
+
+### Changed
+
+- **Anchor Program Scaffolding:** Added guiding comments to `programs/mintcraft/src/lib.rs` for defining Anchor program logic.
+
+## [1.0.2] - 2025-07-07
+
+### Changed
+
+- Added `vitest` for testing and configured it in `vite.config.ts`.
+- Created a test setup file at `src/test/setup.ts`.
+- Scaffolded a new Anchor program in `programs/mintcraft`.
+- Added `Anchor.toml` to configure the program.
+
