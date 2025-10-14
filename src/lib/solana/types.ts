@@ -28,6 +28,9 @@ export interface TokenConfig {
     mintCloseAuthority?: {
       closeAuthority: PublicKey;
     };
+    confidentialTransfers?: boolean;
+    cpiGuard?: boolean;
+    transferHook?: boolean;
   };
   authorities: {
     mintAuthority: PublicKey;

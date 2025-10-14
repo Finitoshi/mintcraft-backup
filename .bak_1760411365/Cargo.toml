@@ -1,0 +1,7 @@
+[workspace]
+exclude = ["offchain-logger"]
+members = ["programs/mintcraft", "offchain-logger"]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true

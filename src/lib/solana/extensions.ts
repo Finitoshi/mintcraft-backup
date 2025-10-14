@@ -25,6 +25,9 @@ export class TokenExtensionHandler {
     if (extensions.nonTransferrable) extensionTypes.push(ExtensionType.NonTransferable);
     if (extensions.defaultAccountState) extensionTypes.push(ExtensionType.DefaultAccountState);
     if (extensions.mintCloseAuthority) extensionTypes.push(ExtensionType.MintCloseAuthority);
+    if (extensions.confidentialTransfers) extensionTypes.push(ExtensionType.ConfidentialTransferMint);
+    if (extensions.cpiGuard) extensionTypes.push(ExtensionType.CpiGuard);
+    if (extensions.transferHook) extensionTypes.push(ExtensionType.TransferHook);
 
     return getMintLen(extensionTypes);
   }
@@ -105,6 +108,21 @@ export class TokenExtensionHandler {
           TOKEN_2022_PROGRAM_ID
         )
       );
+    }
+
+    if (extensions.confidentialTransfers) {
+      console.log('🕵️ Adding Confidential Transfers extension (placeholder)...');
+      // TODO: Add actual instruction for Confidential Transfers
+    }
+
+    if (extensions.cpiGuard) {
+      console.log('🛡️ Adding CPI Guard extension (placeholder)...');
+      // TODO: Add actual instruction for CPI Guard
+    }
+
+    if (extensions.transferHook) {
+      console.log('🔗 Adding Transfer Hook extension (placeholder)...');
+      // TODO: Add actual instruction for Transfer Hook
     }
 
     return instructions;

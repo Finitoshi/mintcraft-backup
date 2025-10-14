@@ -6,6 +6,7 @@ import { TokenFormData } from '@/components/TokenForm';
 import { Token22Extension } from '@/components/Token22Extensions';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionBuilder } from '@/lib/solana/transaction-builder';
+import { TokenConfig } from '@/lib/solana/types';
 
 // API Base URL - change this to your deployed API URL
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -78,13 +79,16 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
       // Build token configuration
       const enabledExtensions = extensions.filter(ext => ext.enabled);
       
-      const tokenConfig = {
+      const tokenConfig: TokenConfig = {
         name: formData.name,
         symbol: formData.symbol,
         decimals: parseInt(formData.decimals),
         supply: parseInt(formData.supply),
-        metadataUri,
-        extensions: {} as any,
+        ...(formData.maxWalletPercentage
+          ? { maxWalletPercentage: parseFloat(formData.maxWalletPercentage) }
+          : {}),
+        ...(metadataUri ? { metadataUri } : {}),
+        extensions: {},
         authorities: {
           mintAuthority: publicKey,
           freezeAuthority: publicKey,
@@ -97,7 +101,7 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
           case 'transfer-fee':
             tokenConfig.extensions.transferFee = {
               feeBasisPoints: 250, // 2.5%
-              maxFee: (1000 * Math.pow(10, tokenConfig.decimals)).toString(), // Max 1000 tokens as string
+              maxFee: BigInt(1000 * Math.pow(10, tokenConfig.decimals)),
               transferFeeConfigAuthority: publicKey,
               withdrawWithheldAuthority: publicKey,
             };
@@ -124,6 +128,18 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
             tokenConfig.extensions.mintCloseAuthority = {
               closeAuthority: publicKey,
             };
+            break;
+
+          case 'confidential-transfers':
+            tokenConfig.extensions.confidentialTransfers = true;
+            break;
+
+          case 'cpi-guard':
+            tokenConfig.extensions.cpiGuard = true;
+            break;
+
+          case 'transfer-hook':
+            tokenConfig.extensions.transferHook = true;
             break;
         }
       });

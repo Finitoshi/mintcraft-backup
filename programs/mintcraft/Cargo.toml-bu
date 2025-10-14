@@ -1,0 +1,36 @@
+[package]
+name = "mintcraft"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mintcraft"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-messages = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.30.1", default-features = false, features = ["derive","idl-build"] }
+anchor-spl = { version = "0.30.1", features = ["token", "associated_token", "idl-build"] }
+spl-token = { version = "4.0.3", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "3.0.4", features = ["no-entrypoint"] }
+solana-program = "1.18.17"
+solana-sdk = "1.18.17"
+
+[dev-dependencies]
+env_logger = { version = "0.9.3", default-features = false, features = ["regex"] }
+termcolor = { version = "1.4.1", default-features = false }
+atty = "0.2.14"
+regex = "1.10.4"
+switchboard-solana = { version = "0.30.4", default-features = false, features = ["no-entrypoint", "cpi"] }
+
+[dev-dependencies]
+# match the Solana SDK version to avoid rbpf mismatch
+solana-program-test = "1.18.22"

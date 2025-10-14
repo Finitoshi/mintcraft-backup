@@ -5,14 +5,7 @@ import {
   SystemProgram,
   Transaction,
 } from '@solana/web3.js';
-import {
-  TOKEN_2022_PROGRAM_ID,
-  createInitializeMintInstruction,
-  createAssociatedTokenAccountInstruction,
-  createMintToInstruction,
-  getAssociatedTokenAddressSync,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-} from '@solana/spl-token';
+import * as Token2022Program from '@solana/spl-token';
 import { TokenConfig } from './types';
 import { TokenExtensionHandler } from './extensions';
 
@@ -36,12 +29,12 @@ export class TransactionBuilder {
     const mintLamports = await connection.getMinimumBalanceForRentExemption(mintSpace);
 
     // Generate associated token account for initial minting
-    const associatedTokenAccount = getAssociatedTokenAddressSync(
+    const associatedTokenAccount = Token2022Program.getAssociatedTokenAddressSync(
       mintKeypair.publicKey,
       payerWallet,
       false,
-      TOKEN_2022_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
+      Token2022Program.TOKEN_2022_PROGRAM_ID,
+      Token2022Program.ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
     console.log('📊 Mint account details:', {
@@ -60,7 +53,7 @@ export class TransactionBuilder {
         newAccountPubkey: mintKeypair.publicKey,
         space: mintSpace,
         lamports: mintLamports,
-        programId: TOKEN_2022_PROGRAM_ID,
+        programId: Token2022Program.TOKEN_2022_PROGRAM_ID,
       })
     );
 
@@ -74,25 +67,25 @@ export class TransactionBuilder {
     // Initialize the mint (MUST be last)
     console.log('🎯 Adding Initialize Mint instruction...');
     transaction.add(
-      createInitializeMintInstruction(
+      Token2022Program.createInitializeMintInstruction(
         mintKeypair.publicKey,
         config.decimals,
         config.authorities.mintAuthority,
         config.authorities.freezeAuthority,
-        TOKEN_2022_PROGRAM_ID
+        Token2022Program.TOKEN_2022_PROGRAM_ID
       )
     );
 
     // Create associated token account for initial minting
     console.log('🏦 Adding Associated Token Account instruction...');
     transaction.add(
-      createAssociatedTokenAccountInstruction(
+      Token2022Program.createAssociatedTokenAccountInstruction(
         payerWallet,
         associatedTokenAccount,
         payerWallet,
         mintKeypair.publicKey,
-        TOKEN_2022_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
+        Token2022Program.TOKEN_2022_PROGRAM_ID,
+        Token2022Program.ASSOCIATED_TOKEN_PROGRAM_ID
       )
     );
 
@@ -101,13 +94,13 @@ export class TransactionBuilder {
       console.log('💰 Adding Mint To instruction for initial supply...');
       const mintAmount = BigInt(config.supply) * BigInt(Math.pow(10, config.decimals));
       transaction.add(
-        createMintToInstruction(
+        Token2022Program.createMintToInstruction(
           mintKeypair.publicKey,
           associatedTokenAccount,
           payerWallet,
           mintAmount,
           [],
-          TOKEN_2022_PROGRAM_ID
+          Token2022Program.TOKEN_2022_PROGRAM_ID
         )
       );
     }

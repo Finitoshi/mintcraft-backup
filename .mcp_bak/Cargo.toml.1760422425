@@ -1,0 +1,17 @@
+[workspace]
+members = ["programs/mintcraft"]
+resolver = "2"
+
+# Pin base64ct to a 1.7.x release to avoid pulling 1.8.0+, which
+# requires the unstable Cargo `edition2024`. The Anchor docker image
+# v0.30.x (Rust 1.79) cannot build crates that opt into edition 2024.
+# See build logs referencing base64ct-1.8.0 and the edition2024 error.
+[patch.crates-io]
+base64ct = { version = "=1.7.3" }
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+opt-level = "s"
+panic = "abort"

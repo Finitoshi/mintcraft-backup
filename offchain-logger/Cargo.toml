@@ -1,0 +1,9 @@
+[package]
+name = "offchain-logger"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = { version = "0.9.3", default-features = false, features = ["regex"] }
+termcolor = { version = "1.4.1", default-features = false }
+atty = "0.2.14"
