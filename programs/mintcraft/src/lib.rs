@@ -1,25 +1,24 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
-use anchor_spl::associated_token::AssociatedToken;
-use spl_token::instruction::{initialize_mint2, mint_to};
-use spl_token::state::Mint as SplMint;
-use anchor_lang::solana_program::program_pack::Pack;
+#![allow(unexpected_cfgs)]
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token_2022::Token2022;
+use anchor_lang::solana_program::program_pack::Pack;
+use spl_token_2022::instruction::{initialize_mint2, mint_to};
+use spl_token_2022::state::Mint as SplMint;
+
+declare_id!("9HeGKECKeVEK6XEjjqTdwjReX2n28xdZJ8TSb4ibi9K1");
 
 #[program]
 pub mod mintcraft {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
         msg!("Mintcraft program initialized!");
         Ok(())
     }
 
-    pub fn create_token(
-        ctx: Context<CreateToken>,
-        args: TokenArgs,
-    ) -> Result<()> {
+    pub fn create_token(ctx: Context<CreateToken>, args: TokenArgs) -> Result<()> {
         msg!("Creating token: {}", args.name);
         msg!("Symbol: {}", args.symbol);
         msg!("Decimals: {}", args.decimals);
@@ -27,17 +26,17 @@ pub mod mintcraft {
         msg!("URI: {}", args.uri);
 
         // Create the mint account
-        let size = SplMint::LEN;
+        let mint_space = SplMint::LEN;
         let rent = Rent::get()?;
-        let lamports = rent.minimum_balance(size);
+        let lamports = rent.minimum_balance(mint_space);
 
         anchor_lang::solana_program::program::invoke(
             &anchor_lang::solana_program::system_instruction::create_account(
                 &ctx.accounts.payer.key(),
                 &ctx.accounts.mint.key(),
                 lamports,
-                size as u64,
-                &spl_token::id(),
+                mint_space as u64,
+                &spl_token_2022::id(),
             ),
             &[
                 ctx.accounts.payer.to_account_info(),
@@ -49,10 +48,10 @@ pub mod mintcraft {
         // Initialize the mint account
         anchor_lang::solana_program::program::invoke(
             &initialize_mint2(
-                &spl_token::id(),
+                &spl_token_2022::id(),
                 &ctx.accounts.mint.key(),
-                &ctx.accounts.payer.key(), // Mint authority
-                Some(&ctx.accounts.payer.key()), // Freeze authority
+                &ctx.accounts.payer.key(),
+                Some(&ctx.accounts.payer.key()),
                 args.decimals,
             )?,
             &[
@@ -62,28 +61,26 @@ pub mod mintcraft {
             ],
         )?;
 
-        // Create associated token account for the payer
-        anchor_spl::associated_token::create(
-            CpiContext::new(
-                ctx.accounts.associated_token_program.to_account_info(),
-                anchor_spl::associated_token::Create {
-                    payer: ctx.accounts.payer.to_account_info(),
-                    associated_token: ctx.accounts.associated_token_account.to_account_info(),
-                    authority: ctx.accounts.payer.to_account_info(),
-                    mint: ctx.accounts.mint.to_account_info(),
-                    system_program: ctx.accounts.system_program.to_account_info(),
-                    token_program: ctx.accounts.token_program.to_account_info(),
-                },
-            ),
-        )?;
+        // Create the payer's associated token account
+        anchor_spl::associated_token::create(CpiContext::new(
+            ctx.accounts.associated_token_program.to_account_info(),
+            anchor_spl::associated_token::Create {
+                payer: ctx.accounts.payer.to_account_info(),
+                associated_token: ctx.accounts.associated_token_account.to_account_info(),
+                authority: ctx.accounts.payer.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+                token_program: ctx.accounts.token_program.to_account_info(),
+            },
+        ))?;
 
         // Mint initial supply to the associated token account
         anchor_lang::solana_program::program::invoke(
             &mint_to(
-                &spl_token::id(),
+                &spl_token_2022::id(),
                 &ctx.accounts.mint.key(),
                 &ctx.accounts.associated_token_account.key(),
-                &ctx.accounts.payer.key(), // Mint authority
+                &ctx.accounts.payer.key(),
                 &[],
                 args.supply,
             )?,
@@ -110,14 +107,14 @@ pub struct Initialize<'info> {
 pub struct CreateToken<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    /// CHECK: This is the new mint account to be created
+    /// CHECK: Mint account created within the instruction
     #[account(mut)]
     pub mint: UncheckedAccount<'info>,
-    /// CHECK: This is the associated token account for the payer
+    /// CHECK: Associated token account created within the instruction
     #[account(mut)]
     pub associated_token_account: AccountInfo<'info>,
+    pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
 }

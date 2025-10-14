@@ -1,12 +1,10 @@
 [package]
 name = "mintcraft"
 version = "0.1.0"
-description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "mintcraft"
 
 [features]
 no-entrypoint = []
@@ -17,10 +15,9 @@ default = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.30.1", features = ["derive", "idl-build"] }
-anchor-spl = { version = "0.30.1", features = ["token", "associated_token", "idl-build"] }
-spl-token = { version = "4.0.3", features = ["no-entrypoint"] }
-spl-associated-token-account = { version = "3.0.4", features = ["no-entrypoint"] }
-solana-program = "1.18.17"
-solana-sdk = "1.18.17"
-switchboard-v2 = { git = "https://github.com/switchboard-xyz/solana-sdk.git", branch = "main" }
+anchor-lang = { version = "0.32.1", default-features = false, features = ["derive"] }
+anchor-spl  = { version = "0.32.1", default-features = false, features = ["associated_token", "token", "token_2022"] }
+spl-token-2022 = { version = "8.0.1", default-features = false, features = ["no-entrypoint"] }
+
+[dev-dependencies]
+solana-program-test = "2.3.0"

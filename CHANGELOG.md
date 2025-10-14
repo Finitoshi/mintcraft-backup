@@ -1,5 +1,18 @@
 # MintCraft Changelog
 
+# MintCraft Changelog
+
+## [1.0.7] - 2025-10-14
+
+### Changed
+
+- **Toolchain Alignment:** Bumped `anchor-lang`/`anchor-spl` to 0.32.1, added `spl-token-2022`, and locked the workspace to Solana CLI 2.3.0 via `Anchor.toml`.
+- **Program Updates:** Refactored `create_token` to target the Token-2022 program, removed the unused `getrandom` patch, and silenced prior build warnings.
+
+### Fixed
+
+- **Build Stability:** `cargo check` and `anchor build` now succeed on the Anchor 0.32.1 / Solana 2.3.0 stack without the previous `proc_macro2`/`regex-automata` failures.
+
 ## [1.0.6] - 2025-07-07
 
 ### Changed
@@ -83,4 +96,3 @@
 - Created a test setup file at `src/test/setup.ts`.
 - Scaffolded a new Anchor program in `programs/mintcraft`.
 - Added `Anchor.toml` to configure the program.
-
