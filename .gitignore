@@ -1,27 +1,16 @@
-# Rust / Anchor
 target/
+node_modules/
+dist/
 **/*.rlib
 **/*.rmeta
 **/*.a
 **/*.so
 **/*.dSYM/
 **/*.dwp
-
-# Node / Vite
-node_modules/
-dist/
-.build/
-.cache/
-.next/
-out/
-
-# Logs & misc
 *.log
 .DS_Store
 .env
 .env.*
 *.local
-
-# IDE
 .vscode/
 .idea/
