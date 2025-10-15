@@ -1,6 +1,12 @@
 # MintCraft Changelog
 
-# MintCraft Changelog
+## [1.0.8] - 2025-10-14
+
+### Fixed
+
+- Restored Vitest configuration so React tests run under `jsdom` with the shared setup file.
+- Disabled the unimplemented Token-2022 extension toggles until their mint instructions are available, preventing misconfigured tokens.
+- Removed accidental backup artifacts/binaries from version control and expanded `.gitignore` to keep future clutter out of the repo.
 
 ## [1.0.7] - 2025-10-14
 

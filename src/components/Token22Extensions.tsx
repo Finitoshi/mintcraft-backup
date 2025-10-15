@@ -12,6 +12,7 @@ export interface Token22Extension {
   enabled: boolean;
   category: 'fee' | 'authority' | 'transfer' | 'security';
   riskLevel: 'low' | 'medium' | 'high';
+  available?: boolean;
 }
 
 interface Token22ExtensionsProps {
@@ -54,7 +55,9 @@ export function Token22Extensions({ extensions, onExtensionToggle }: Token22Exte
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {extensions.map((extension) => (
+        {extensions.map((extension) => {
+          const isComingSoon = extension.available === false;
+          return (
           <div key={extension.id} className="flex items-center justify-between p-4 border rounded-lg">
             <div className="space-y-2 flex-1">
               <div className="flex items-center gap-2">
@@ -64,6 +67,11 @@ export function Token22Extensions({ extensions, onExtensionToggle }: Token22Exte
                 <Badge className={categoryColors[extension.category]} variant="outline">
                   {extension.category}
                 </Badge>
+                {isComingSoon && (
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                    Coming Soon
+                  </Badge>
+                )}
                 <span className={`text-xs font-medium ${riskColors[extension.riskLevel]}`}>
                   {extension.riskLevel.toUpperCase()} RISK
                 </span>
@@ -75,11 +83,12 @@ export function Token22Extensions({ extensions, onExtensionToggle }: Token22Exte
             <Switch
               id={extension.id}
               checked={extension.enabled}
+              disabled={isComingSoon}
               onCheckedChange={(checked) => onExtensionToggle(extension.id, checked)}
               className="ml-4"
             />
           </div>
-        ))}
+        )})}
       </CardContent>
     </Card>
   );

@@ -77,7 +77,9 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
       }
 
       // Build token configuration
-      const enabledExtensions = extensions.filter(ext => ext.enabled);
+      const enabledExtensions = extensions.filter(
+        (ext) => ext.enabled && ext.available !== false
+      );
       
       const tokenConfig: TokenConfig = {
         name: formData.name,

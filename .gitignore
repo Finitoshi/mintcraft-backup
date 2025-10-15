@@ -14,3 +14,15 @@ dist/
 *.local
 .vscode/
 .idea/
+.bak_*/
+.mcp_bak/
+.stack_bak/
+.mcp_*
+*.bak
+*.tmp
+*.deb
+cloudflared.deb
+agave-install-init-*
+solana-install-init-*
+solana.git/
+tmp/

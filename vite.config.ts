@@ -8,4 +8,9 @@ export default defineConfig({
   plugins: [react(), nodePolyfills(), tsconfigPaths()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   optimizeDeps: { include: ['buffer','process'] },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+  },
 })

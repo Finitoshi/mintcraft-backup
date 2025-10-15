@@ -1,6 +1,0 @@
-[workspace]
-members = ["programs/mintcraft", "offchain-logger"]
-resolver = "2"
-
-[profile.release]
-overflow-checks = true
