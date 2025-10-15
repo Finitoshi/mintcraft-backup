@@ -19,7 +19,7 @@ export interface MintingStatus {
 }
 
 export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: string) {
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const { toast } = useToast();
   
@@ -32,7 +32,7 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
     formData: TokenFormData,
     extensions: Token22Extension[]
   ) => {
-    if (!publicKey || !signTransaction) {
+    if (!publicKey || !sendTransaction) {
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet to mint tokens",
@@ -158,14 +158,12 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         mintKeypair
       );
 
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
-      const signedTransaction = await signTransaction(transaction);
-      
-      // Send the signed transaction
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      const signature = await sendTransaction(transaction, connection, {
+        signers: [mintKeypair],
+      });
+
       await connection.confirmTransaction(signature, 'confirmed');
 
       setStatus({
@@ -196,7 +194,7 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         variant: "destructive",
       });
     }
-  }, [publicKey, signTransaction, network, customRpcUrl, toast, connection]);
+  }, [publicKey, sendTransaction, network, customRpcUrl, toast, connection]);
 
   const resetStatus = useCallback(() => {
     setStatus({ step: 'idle', message: 'Ready to mint' });

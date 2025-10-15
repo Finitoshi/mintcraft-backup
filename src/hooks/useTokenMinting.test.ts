@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useTokenMinting } from './useTokenMinting';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { PublicKey, Transaction, Keypair, TransactionInstruction, SystemProgram } from '@solana/web3.js';
+import { Transaction, Keypair } from '@solana/web3.js';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 
 // Mock dependencies
@@ -18,23 +18,30 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
+let buildTokenCreationTransactionMock: ReturnType<typeof vi.fn> | undefined;
+let walletKeypair: Keypair;
+
 vi.mock('@/lib/solana/transaction-builder', () => ({
-  TransactionBuilder: vi.fn().mockImplementation(() => ({
-    buildTokenCreationTransaction: vi.fn().mockResolvedValue({
-      transaction: {
-        ...new Transaction(),
-        serialize: vi.fn(() => Buffer.from('mock_serialized_transaction')),
-      },
-      associatedTokenAccount: Keypair.generate().publicKey,
-    }),
-  })),
+  TransactionBuilder: vi.fn().mockImplementation(() => {
+    buildTokenCreationTransactionMock = vi.fn(async () => {
+      const transaction = new Transaction();
+
+      return {
+        transaction,
+        associatedTokenAccount: Keypair.generate().publicKey,
+      };
+    });
+
+    return {
+      buildTokenCreationTransaction: buildTokenCreationTransactionMock,
+    };
+  }),
 }));
 
 global.fetch = vi.fn();
 
 describe('useTokenMinting', () => {
-  const mockSignTransaction = vi.fn(async (tx: Transaction) => tx);
-  const mockSendRawTransaction = vi.fn().mockResolvedValue('mytesthash');
+  const mockSendTransaction = vi.fn().mockResolvedValue('mytesthash');
   const mockConfirmTransaction = vi.fn().mockResolvedValue(null);
   const mockGetLatestBlockhash = vi.fn().mockResolvedValue({
     blockhash: '4wBqA8sHjZ4aVzaE1ZzSAg4g2XJdJ6FjT3jX8vX8aY8H', // A valid base58 string
@@ -43,15 +50,16 @@ describe('useTokenMinting', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    buildTokenCreationTransactionMock = undefined;
+    walletKeypair = Keypair.generate();
 
     (useWallet as vi.Mock).mockReturnValue({
-      publicKey: Keypair.generate().publicKey,
-      signTransaction: mockSignTransaction,
+      publicKey: walletKeypair.publicKey,
+      sendTransaction: mockSendTransaction,
     });
 
     (useConnection as vi.Mock).mockReturnValue({
       connection: {
-        sendRawTransaction: mockSendRawTransaction,
         confirmTransaction: mockConfirmTransaction,
         getLatestBlockhash: mockGetLatestBlockhash,
         getMinimumBalanceForRentExemption: vi.fn().mockResolvedValue(2039280),
@@ -85,9 +93,14 @@ describe('useTokenMinting', () => {
 
     expect(result.current.status.step).toBe('success');
     expect(fetch).toHaveBeenCalledWith('http://localhost:3001/api/upload-to-ipfs', expect.any(Object));
-    expect(mockSignTransaction).toHaveBeenCalledOnce();
-    expect(mockSendRawTransaction).toHaveBeenCalledOnce();
+    expect(mockSendTransaction).toHaveBeenCalledOnce();
+    const [txArg, connectionArg, optionsArg] = mockSendTransaction.mock.calls[0];
+    expect(txArg).toBeInstanceOf(Transaction);
+    expect(connectionArg).toHaveProperty('confirmTransaction');
+    expect(optionsArg?.signers?.[0]).toBeInstanceOf(Keypair);
     expect(mockConfirmTransaction).toHaveBeenCalledOnce();
+    expect(buildTokenCreationTransactionMock).toBeDefined();
+    expect(buildTokenCreationTransactionMock!).toHaveBeenCalledOnce();
     expect(result.current.status.message).toBe('Token created successfully!');
     expect(result.current.status.txSignature).toBe('mytesthash');
     expect(result.current.status.mintAddress).toBeDefined();
@@ -96,7 +109,7 @@ describe('useTokenMinting', () => {
   it('should handle wallet not connected error', async () => {
     (useWallet as vi.Mock).mockReturnValue({
       publicKey: null,
-      signTransaction: null,
+      sendTransaction: null,
     });
 
     const { result } = renderHook(() => useTokenMinting(WalletAdapterNetwork.Devnet));

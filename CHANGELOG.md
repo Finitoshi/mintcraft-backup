@@ -1,5 +1,21 @@
 # MintCraft Changelog
 
+## [1.0.9] - 2025-10-15
+
+### Added
+
+- Created on-chain token metadata for SPL Token-2022 mints using Metaplex’s `createV1` layout, ensuring explorers display name, symbol, and URI for every newly forged asset.
+
+### Changed
+
+- Swapped the mint flow to wallet-adapter’s `sendTransaction`, resolving stale blockhash failures and reducing the sign flow to a single approval.
+- Wired the Token-2022 metadata instruction to include the correct sysvar and token-program accounts plus mint decimals so fungible tokens serialize cleanly.
+
+### Fixed
+
+- Synced the UI network toggle with the wallet provider to stop accidental mainnet connections while building on devnet.
+- Patched the minting hook to partially sign with the mint keypair before handoff, fixing the signature-verification error that blocked token creation.
+
 ## [1.0.8] - 2025-10-14
 
 ### Fixed

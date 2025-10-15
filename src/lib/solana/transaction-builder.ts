@@ -3,11 +3,18 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
   Transaction,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import * as Token2022Program from '@solana/spl-token';
+import * as MPLMetadata from '@metaplex-foundation/mpl-token-metadata';
 import { TokenConfig } from './types';
 import { TokenExtensionHandler } from './extensions';
+
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
+  'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
+);
 
 export class TransactionBuilder {
   private extensionHandler: TokenExtensionHandler;
@@ -62,7 +69,9 @@ export class TransactionBuilder {
       mintKeypair.publicKey,
       config.extensions
     );
-    transaction.add(...extensionInstructions);
+    if (extensionInstructions.length > 0) {
+      transaction.add(...extensionInstructions);
+    }
 
     // Initialize the mint (MUST be last)
     console.log('🎯 Adding Initialize Mint instruction...');
@@ -104,6 +113,66 @@ export class TransactionBuilder {
         )
       );
     }
+
+    // Create metadata account so explorers can resolve token name/symbol
+    const [metadataPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('metadata'),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mintKeypair.publicKey.toBuffer(),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    );
+
+    const sanitizedName = config.name.slice(0, 32);
+    const sanitizedSymbol = config.symbol.slice(0, 10);
+    const sanitizedUri = (config.metadataUri ?? '').slice(0, 200);
+
+    const [masterEditionPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('metadata'),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mintKeypair.publicKey.toBuffer(),
+        Buffer.from('edition'),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    );
+
+    const metadataData = MPLMetadata.getCreateV1InstructionDataSerializer().serialize({
+      name: sanitizedName,
+      symbol: sanitizedSymbol,
+      uri: sanitizedUri,
+      sellerFeeBasisPoints: { basisPoints: 0n, decimals: 2 },
+      creators: null,
+      primarySaleHappened: false,
+      isMutable: true,
+      tokenStandard: MPLMetadata.TokenStandard.Fungible,
+      collection: null,
+      uses: null,
+      collectionDetails: null,
+      ruleSet: null,
+      decimals: config.decimals,
+      printSupply: null,
+    });
+
+    console.log('🪪 Adding Metadata instruction...');
+    const metadataInstruction = new TransactionInstruction({
+      programId: TOKEN_METADATA_PROGRAM_ID,
+      keys: [
+        { pubkey: metadataPda, isSigner: false, isWritable: true },
+        { pubkey: masterEditionPda, isSigner: false, isWritable: false },
+        { pubkey: mintKeypair.publicKey, isSigner: true, isWritable: true },
+        { pubkey: payerWallet, isSigner: true, isWritable: false }, // authority
+        { pubkey: payerWallet, isSigner: true, isWritable: true }, // payer
+        { pubkey: payerWallet, isSigner: false, isWritable: false }, // update authority
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_INSTRUCTIONS_PUBKEY, isSigner: false, isWritable: false },
+        { pubkey: Token2022Program.TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      data: Buffer.from(metadataData),
+    });
+
+    transaction.add(metadataInstruction);
 
     return { transaction, associatedTokenAccount };
   }

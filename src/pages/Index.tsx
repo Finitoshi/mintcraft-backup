@@ -107,8 +107,12 @@ const DEFAULT_EXTENSIONS: Token22Extension[] = [
   },
 ];
 
-function MintCraftApp() {
-  const [network, setNetwork] = useState<WalletAdapterNetwork>(WalletAdapterNetwork.Devnet);
+interface MintCraftAppProps {
+  network: WalletAdapterNetwork;
+  onNetworkChange: (network: WalletAdapterNetwork) => void;
+}
+
+function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
   const [extensions, setExtensions] = useState<Token22Extension[]>(DEFAULT_EXTENSIONS);
   const [advancedFeatures, setAdvancedFeatures] = useState<AdvancedFeature[]>(DEFAULT_ADVANCED_FEATURES);
   const [formData, setFormData] = useState<TokenFormData>({
@@ -205,7 +209,7 @@ function MintCraftApp() {
             ⚡ Server & Wallet Connection
           </h3>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <NetworkToggle network={network} onNetworkChange={setNetwork} />
+            <NetworkToggle network={network} onNetworkChange={onNetworkChange} />
             <WalletMultiButton className="minecraft-button !bg-emerald-500 hover:!bg-emerald-400 !text-white !border-emerald-600" />
           </div>
         </div>
@@ -353,11 +357,11 @@ function MintCraftApp() {
 }
 
 export default function Index() {
-  const [network] = useState<WalletAdapterNetwork>(WalletAdapterNetwork.Devnet);
+  const [network, setNetwork] = useState<WalletAdapterNetwork>(WalletAdapterNetwork.Devnet);
   
   return (
     <WalletContextProvider network={network}>
-      <MintCraftApp />
+      <MintCraftApp network={network} onNetworkChange={setNetwork} />
     </WalletContextProvider>
   );
 }
