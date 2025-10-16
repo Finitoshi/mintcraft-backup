@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useTokenMinting } from './useTokenMinting';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Transaction, Keypair } from '@solana/web3.js';
+import { MAX_WALLET_HOOK_PROGRAM_ID } from '@/lib/solana/max-wallet';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 
 // Mock dependencies
@@ -82,7 +83,8 @@ describe('useTokenMinting', () => {
       supply: '1000000',
       description: 'A test token',
       imageFile: new File([new ArrayBuffer(1)], 'test.png', { type: 'image/png' }),
-      maxWalletPercentage: ''
+      maxWalletPercentage: '',
+      enableMaxWallet: false,
     };
 
     const extensions: any[] = [];
@@ -101,6 +103,9 @@ describe('useTokenMinting', () => {
     expect(mockConfirmTransaction).toHaveBeenCalledOnce();
     expect(buildTokenCreationTransactionMock).toBeDefined();
     expect(buildTokenCreationTransactionMock!).toHaveBeenCalledOnce();
+    const creationConfig = buildTokenCreationTransactionMock!.mock.calls[0][1];
+    expect(creationConfig.supplyBaseUnits).toBe(BigInt('1000000000000000'));
+    expect(creationConfig.humanReadableSupply).toBe('1000000');
     expect(result.current.status.message).toBe('Token created successfully!');
     expect(result.current.status.txSignature).toBe('mytesthash');
     expect(result.current.status.mintAddress).toBeDefined();
@@ -121,7 +126,8 @@ describe('useTokenMinting', () => {
       supply: '100000a',
       description: 'A test token',
       imageFile: null,
-      maxWalletPercentage: ''
+      maxWalletPercentage: '',
+      enableMaxWallet: false,
     };
     const extensions: any[] = [];
 
@@ -130,5 +136,33 @@ describe('useTokenMinting', () => {
     });
 
     expect(result.current.status.step).toBe('idle');
+  });
+
+  it('should enable transfer hook when max wallet percentage provided', async () => {
+    const { result } = renderHook(() => useTokenMinting(WalletAdapterNetwork.Devnet));
+
+    const formData = {
+      name: 'Test Token',
+      symbol: 'TEST',
+      decimals: '9',
+      supply: '1000000',
+      description: 'A test token',
+      imageFile: null,
+      maxWalletPercentage: '5',
+      enableMaxWallet: true,
+    };
+
+    const extensions: any[] = [];
+
+    await act(async () => {
+      await result.current.mintToken(formData, extensions);
+    });
+
+    const configArg = buildTokenCreationTransactionMock!.mock.calls[0][1];
+    expect(configArg.maxWalletPercentage).toBe(5);
+    expect(configArg.extensions.transferHook).toBeDefined();
+    expect(configArg.extensions.transferHook.programId).toEqual(
+      MAX_WALLET_HOOK_PROGRAM_ID
+    );
   });
 });

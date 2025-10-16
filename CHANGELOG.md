@@ -13,6 +13,7 @@
 - Wired the Token-2022 metadata instruction to include the correct sysvar and token-program accounts plus mint decimals so fungible tokens serialize cleanly.
 - Mint and transfer forms now work in human-readable token amounts (with live raw-supply previews), preventing confusion around decimals and supply conversions.
 - Transfer hook execution now reads the correct extra-account metas layout, ensuring max-wallet caps are enforced after on-chain configuration.
+- Added an “Enable Max Wallet Cap” toggle in the mint form so creators only initialize the transfer hook when they actually want a cap.
 
 ### Fixed
 

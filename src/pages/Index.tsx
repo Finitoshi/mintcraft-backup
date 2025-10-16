@@ -20,6 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { Coins, Hammer, Shield, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTokenMinting } from '@/hooks/useTokenMinting';
+import { TokenTransfer } from '@/components/TokenTransfer';
 
 const DEFAULT_ADVANCED_FEATURES: AdvancedFeature[] = [
   { id: 'multi-asset-reflections', name: 'Multi-Asset Reflections', description: 'Withheld fees swap to SOL/USDC/BONK and auto-airdrop', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'medium' },
@@ -122,6 +123,7 @@ function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
     supply: '1000000',
     decimals: '9',
     maxWalletPercentage: '',
+    enableMaxWallet: false,
     imageFile: null,
   });
 
@@ -216,12 +218,13 @@ function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
 
         {/* Main Content */}
         <Tabs defaultValue="basic" className="space-y-8">
-          <TabsList className="minecraft-card p-2 grid grid-cols-5 gap-1 bg-gray-800">
+          <TabsList className="minecraft-card p-2 grid grid-cols-6 gap-1 bg-gray-800">
             <TabsTrigger value="basic" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">🔨 Craft</TabsTrigger>
             <TabsTrigger value="advanced" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">🧙 Enchant</TabsTrigger>
             <TabsTrigger value="clone" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">📋 Clone</TabsTrigger>
             <TabsTrigger value="authority" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">👑 Authority</TabsTrigger>
             <TabsTrigger value="preview" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">👁️ Preview</TabsTrigger>
+            <TabsTrigger value="transfer" className="minecraft-button text-xs data-[state=active]:bg-emerald-600">🚚 Transfer</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic">
@@ -259,6 +262,10 @@ function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
 
           <TabsContent value="preview">
             <TransactionPreview />
+          </TabsContent>
+
+          <TabsContent value="transfer">
+            <TokenTransfer />
           </TabsContent>
         </Tabs>
 

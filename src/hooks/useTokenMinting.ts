@@ -7,6 +7,11 @@ import { Token22Extension } from '@/components/Token22Extensions';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionBuilder } from '@/lib/solana/transaction-builder';
 import { TokenConfig } from '@/lib/solana/types';
+import {
+  MAX_WALLET_BPS_CAP,
+  MAX_WALLET_HOOK_PROGRAM_ID,
+} from '@/lib/solana/max-wallet';
+import { convertTokenAmountToBaseUnits } from '@/lib/solana/amount';
 
 // API Base URL - change this to your deployed API URL
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -53,9 +58,11 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         formDataToSend.append('name', formData.name);
         formDataToSend.append('symbol', formData.symbol);
         formDataToSend.append('description', formData.description);
-        if (formData.maxWalletPercentage) {
+        if (formData.enableMaxWallet && formData.maxWalletPercentage) {
           formDataToSend.append('maxWalletPercentage', formData.maxWalletPercentage);
         }
+        formDataToSend.append('decimals', formData.decimals);
+        formDataToSend.append('supply', formData.supply);
 
         const ipfsResponse = await fetch(`${API_BASE_URL}/upload-to-ipfs`, {
           method: 'POST',
@@ -80,14 +87,41 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
       const enabledExtensions = extensions.filter(
         (ext) => ext.enabled && ext.available !== false
       );
+
+      const rawMaxWallet = formData.maxWalletPercentage?.trim() ?? '';
+      const shouldEnableMaxWallet =
+        formData.enableMaxWallet && rawMaxWallet.length > 0;
+
+      let maxWalletPercentageValue: number | undefined;
+      if (shouldEnableMaxWallet) {
+        const parsed = parseFloat(rawMaxWallet);
+        if (Number.isNaN(parsed) || parsed <= 0) {
+          throw new Error('Invalid max wallet percentage');
+        }
+        maxWalletPercentageValue = Math.min(
+          parsed,
+          MAX_WALLET_BPS_CAP / 100
+        );
+      }
       
+      const decimalsNumber = Number.parseInt(formData.decimals, 10);
+      if (Number.isNaN(decimalsNumber) || decimalsNumber < 0 || decimalsNumber > 255) {
+        throw new Error('Invalid decimals value');
+      }
+
+      const supplyBaseUnits = convertTokenAmountToBaseUnits(formData.supply, decimalsNumber);
+      if (supplyBaseUnits <= BigInt(0)) {
+        throw new Error('Supply must be greater than zero');
+      }
+
       const tokenConfig: TokenConfig = {
         name: formData.name,
         symbol: formData.symbol,
-        decimals: parseInt(formData.decimals),
-        supply: parseInt(formData.supply),
-        ...(formData.maxWalletPercentage
-          ? { maxWalletPercentage: parseFloat(formData.maxWalletPercentage) }
+        decimals: decimalsNumber,
+        supplyBaseUnits,
+        humanReadableSupply: formData.supply,
+        ...(shouldEnableMaxWallet && maxWalletPercentageValue !== undefined
+          ? { maxWalletPercentage: maxWalletPercentageValue }
           : {}),
         ...(metadataUri ? { metadataUri } : {}),
         extensions: {},
@@ -141,10 +175,24 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
             break;
 
           case 'transfer-hook':
-            tokenConfig.extensions.transferHook = true;
+            tokenConfig.extensions.transferHook = {
+              programId: MAX_WALLET_HOOK_PROGRAM_ID,
+              authority: publicKey,
+            };
             break;
         }
       });
+
+      if (
+        shouldEnableMaxWallet &&
+        maxWalletPercentageValue !== undefined &&
+        !tokenConfig.extensions.transferHook
+      ) {
+        tokenConfig.extensions.transferHook = {
+          programId: MAX_WALLET_HOOK_PROGRAM_ID,
+          authority: publicKey,
+        };
+      }
 
       setStatus({ step: 'creating-token', message: 'Creating token on Solana...' });
 
