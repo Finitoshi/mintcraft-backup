@@ -71,3 +71,21 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Auto-collect Token Transfer Fees
+
+To sweep Token-2022 transfer taxes into your treasury every hour:
+
+```sh
+# 1. Configure your mint, withdraw authority, and treasury owner.
+cp scripts/collect-fees.env.example scripts/collect-fees.env
+${EDITOR:-nano} scripts/collect-fees.env
+
+# 2. Install the cron job (adds/updates an hourly entry).
+scripts/install-fee-cron.sh
+```
+
+- Edit `CRON_SCHEDULE` in `scripts/collect-fees.env` if you prefer a different cadence.
+- Logs default to `~/.mintcraft/logs/collect-fees-<timestamp>.log`.
+- The job runs `npm run collect:fees`, which auto-discovers taxed accounts, creates the treasury ATA if needed, and withdraws withheld fees to your treasury wallet.
+- Want to route taxes to multiple wallets? Set `SPLIT_RECIPIENTS=WalletA:70,WalletB:30` in the env file (percentages are normalized), and optionally provide `TREASURY_AUTHORITY` if the treasury owner differs from the withdraw authority key.

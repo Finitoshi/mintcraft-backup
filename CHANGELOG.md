@@ -1,5 +1,23 @@
 # MintCraft Changelog
 
+## [Unreleased]
+
+### Added
+
+- Transfer fee configuration controls for Token-2022 mints, including UI inputs for percentage and optional max-per-transfer caps that flow into the mint builder.
+- Treasury wallet support for transfer fees, plus a helper script (`npm run collect:fees`) to sweep withheld taxes into the treasury on a schedule.
+- Cron-friendly wrapper with installation script (`scripts/install-fee-cron.sh`) and env template so creators can enable hourly fee collection with one command.
+- Optional split distributions for collected taxes with `--split` / `SPLIT_RECIPIENTS`, including automatic ATA creation and support for a dedicated treasury signer.
+
+### Changed
+
+- IPFS metadata uploads now include transfer fee traits and updated tests cover the new blanket tax flow.
+- README now walks through copying `scripts/collect-fees.env` and running `scripts/install-fee-cron.sh` to enable hourly sweeps.
+- Transfer console inspects mint TLV data and falls back to standard transfers when no hook is configured, keeping fee-only tokens working out of the box.
+### Fixed
+
+- Prevented transfer fee configuration without a treasury authority by validating wallet addresses during minting.
+
 ## [1.0.9] - 2025-10-15
 
 ### Added
