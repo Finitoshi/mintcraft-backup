@@ -26,3 +26,5 @@ agave-install-init-*
 solana-install-init-*
 solana.git/
 tmp/
+
+scripts/collect-fees.env
