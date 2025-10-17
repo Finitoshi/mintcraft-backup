@@ -123,7 +123,10 @@ export class IPFSService {
     description: string,
     imageFile?: File,
     attributes?: Array<{ trait_type: string; value: string | number }>,
-    maxWalletPercentage?: number
+    maxWalletPercentage?: number,
+    transferFeePercentage?: number,
+    transferFeeMaxTokens?: number,
+    transferFeeTreasuryAddress?: string
   ): Promise<string> {
     console.log('🏗️ Creating complete token metadata...');
 
@@ -151,6 +154,27 @@ export class IPFSService {
       baseAttributes.push({
         trait_type: 'Max Wallet Percentage',
         value: `${maxWalletPercentage}%`
+      });
+    }
+
+    if (typeof transferFeePercentage === 'number') {
+      baseAttributes.push({
+        trait_type: 'Transfer Fee (%)',
+        value: transferFeePercentage,
+      });
+    }
+
+    if (typeof transferFeeMaxTokens === 'number') {
+      baseAttributes.push({
+        trait_type: 'Max Fee Per Transfer (Tokens)',
+        value: transferFeeMaxTokens,
+      });
+    }
+
+    if (transferFeeTreasuryAddress) {
+      baseAttributes.push({
+        trait_type: 'Transfer Fee Treasury',
+        value: transferFeeTreasuryAddress,
       });
     }
 

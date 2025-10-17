@@ -6,6 +6,7 @@ const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || '127.0.0.1';
 
 // Middleware
 app.use(cors());
@@ -19,7 +20,18 @@ app.post('/api/upload-to-ipfs', upload.single('image'), async (req, res) => {
   try {
     console.log('🔥 IPFS Upload starting...');
     
-    const { name, symbol, description, maxWalletPercentage } = req.body;
+    const {
+      name,
+      symbol,
+      description,
+      maxWalletPercentage,
+      decimals,
+      supply,
+      transferFeePercentage,
+      transferFeeMaxTokens,
+      transferFeeTreasuryAddress,
+      transferFeeSplitRecipients,
+    } = req.body;
     const imageFile = req.file;
 
     if (!imageFile) {
@@ -48,6 +60,9 @@ app.post('/api/upload-to-ipfs', upload.single('image'), async (req, res) => {
     console.log('✅ Image uploaded to IPFS:', imageUri);
 
     // Create metadata
+    const parsedDecimals = decimals ? parseInt(decimals, 10) : undefined;
+    const parsedSupply = supply ? parseFloat(supply) : undefined;
+
     const metadata = {
       name,
       symbol,
@@ -67,12 +82,102 @@ app.post('/api/upload-to-ipfs', upload.single('image'), async (req, res) => {
     };
 
     // Add max wallet percentage if provided
-    if (maxWalletPercentage) {
-      metadata.attributes.push({
-        trait_type: 'Max Wallet Percentage',
-        value: parseFloat(maxWalletPercentage),
+    const baseAttributes = [
+      {
+        trait_type: 'Token Standard',
+        value: 'SPL Token-2022',
+      },
+      {
+        trait_type: 'Network',
+        value: 'Solana Devnet',
+      },
+    ];
+
+    if (typeof parsedDecimals === 'number' && !Number.isNaN(parsedDecimals)) {
+      baseAttributes.push({
+        trait_type: 'Decimals',
+        value: parsedDecimals,
       });
     }
+
+    if (typeof parsedSupply === 'number' && !Number.isNaN(parsedSupply)) {
+      baseAttributes.push({
+        trait_type: 'Initial Supply',
+        value: parsedSupply,
+      });
+    }
+
+    if (maxWalletPercentage) {
+      const parsedMaxWallet = parseFloat(maxWalletPercentage);
+      if (!Number.isNaN(parsedMaxWallet)) {
+        baseAttributes.push({
+          trait_type: 'Max Wallet Percentage',
+          value: parsedMaxWallet,
+        });
+      }
+    }
+
+    if (transferFeePercentage) {
+      const parsedTransferFeePct = parseFloat(transferFeePercentage);
+      if (!Number.isNaN(parsedTransferFeePct)) {
+        baseAttributes.push({
+          trait_type: 'Transfer Fee (%)',
+          value: parsedTransferFeePct,
+        });
+      }
+    }
+
+    if (transferFeeMaxTokens) {
+      const parsedMaxFeeTokens = parseFloat(transferFeeMaxTokens);
+      if (!Number.isNaN(parsedMaxFeeTokens)) {
+        baseAttributes.push({
+          trait_type: 'Max Fee Per Transfer (Tokens)',
+          value: parsedMaxFeeTokens,
+        });
+      }
+    }
+
+    let parsedSplitRecipients = [];
+    if (transferFeeSplitRecipients) {
+      try {
+        const rawSplit = JSON.parse(transferFeeSplitRecipients);
+        if (Array.isArray(rawSplit)) {
+          parsedSplitRecipients = rawSplit
+            .map((entry) => ({
+              address: typeof entry.address === 'string' ? entry.address : '',
+              percent: typeof entry.percent === 'number' ? entry.percent : Number(entry.percent),
+            }))
+            .filter(
+              (entry) =>
+                entry.address &&
+                !Number.isNaN(entry.percent) &&
+                Number.isFinite(entry.percent) &&
+                entry.percent > 0
+            );
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to parse transfer fee split recipients:', error);
+      }
+    }
+
+    if (transferFeeTreasuryAddress) {
+      baseAttributes.push({
+        trait_type: 'Transfer Fee Treasury',
+        value: transferFeeTreasuryAddress,
+      });
+    }
+
+    if (parsedSplitRecipients.length > 0) {
+      baseAttributes.push({
+        trait_type: 'Transfer Fee Split Recipients',
+        value: parsedSplitRecipients
+          .map((entry) => `${entry.address}:${entry.percent}`)
+          .join(', '),
+      });
+      metadata.properties.transferFeeSplits = parsedSplitRecipients;
+    }
+
+    metadata.attributes = baseAttributes;
 
     // Upload metadata to IPFS
     const metadataFormData = new FormData();
@@ -114,8 +219,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'MintCraft API is running' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 MintCraft API server running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 MintCraft API server running on http://${HOST}:${PORT}`);
 });
 
 module.exports = app;

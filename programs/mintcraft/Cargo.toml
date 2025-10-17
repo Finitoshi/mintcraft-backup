@@ -15,9 +15,11 @@ default = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.32.1", default-features = false, features = ["derive"] }
+anchor-lang = { version = "0.32.1", default-features = false, features = ["derive", "interface-instructions", "init-if-needed"] }
 anchor-spl  = { version = "0.32.1", default-features = false, features = ["associated_token", "token", "token_2022"] }
 spl-token-2022 = { version = "8.0.1", default-features = false, features = ["no-entrypoint"] }
+spl-transfer-hook-interface = { version = "0.10.0", default-features = false }
+spl-tlv-account-resolution = { version = "0.10.0", default-features = false }
 
 [dev-dependencies]
 solana-program-test = "2.3.0"

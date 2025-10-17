@@ -1,4 +1,14 @@
-# Welcome to your Lovable project
+# MintCraft - Solana Token-2022 Creation Platform
+
+Create professional Solana tokens with advanced features like transfer fees, max wallet caps, and automated treasury management - all without writing code.
+
+## 🚀 Quick Links
+
+- **[📖 Complete Documentation Index](./DOCUMENTATION_INDEX.md)** - Start here to find what you need
+- **[👤 User Guide](./docs/USER_GUIDE.md)** - Step-by-step token creation guide
+- **[💡 Tokenomics Examples](./docs/TOKENOMICS_EXAMPLES.md)** - Real-world configurations
+- **[❓ FAQ](./docs/FAQ.md)** - Common questions & troubleshooting
+- **[🔧 Technical Overview](./docs/TECHNICAL_OVERVIEW.md)** - Architecture & API docs
 
 ## Project info
 
@@ -71,6 +81,81 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## ✨ Features
+
+### Token-2022 Extensions
+- **Transfer Fees**: Automatic tax on transfers with configurable percentage
+- **Max Wallet Cap**: Limit token holdings per wallet to prevent whales
+- **Split Distributions**: Route fees to multiple wallets automatically
+- **Transfer Hooks**: Custom on-chain validation during transfers
+- **Metaplex Metadata**: On-chain name, symbol, and image
+
+### User Experience
+- **One-Click Creation**: Create tokens in under 5 minutes
+- **Client-Side Signing**: Your keys never leave your browser
+- **IPFS Storage**: Decentralized metadata and image hosting
+- **Automated Fee Collection**: Set up hourly cron jobs for fee sweeps
+- **Multiple Explorers**: Works with Solana Explorer, Solscan, XRAY
+
+### Developer Features
+- **Open Source**: Fully auditable code
+- **Extensible**: Add custom Token-2022 extensions
+- **TypeScript SDK**: Use transaction builder in your dApp
+- **Anchor Program**: Verified on-chain program
+- **Comprehensive Docs**: 15,000+ words of documentation
+
+## 📚 Documentation
+
+### For Token Creators
+- **[User Guide](./docs/USER_GUIDE.md)** - Complete walkthrough of token creation
+- **[Tokenomics Examples](./docs/TOKENOMICS_EXAMPLES.md)** - 7 real-world token models
+- **[FAQ](./docs/FAQ.md)** - 60+ questions answered
+- **[Fixing Unknown Instructions](./docs/FIXING_UNKNOWN_INSTRUCTIONS.md)** - Explorer display issues
+
+### For Developers
+- **[Technical Overview](./docs/TECHNICAL_OVERVIEW.md)** - Architecture & API documentation
+- **[CLAUDE.md](./CLAUDE.md)** - Development commands & workflows
+- **[Build Notes](./docs/BUILD_NOTES.md)** - Anchor build troubleshooting
+- **[Changelog](./CHANGELOG.md)** - Version history
+
+### Navigation
+- **[Documentation Index](./DOCUMENTATION_INDEX.md)** - Complete guide to all docs
+
+## 🎯 Quick Start
+
+### Create Your First Token
+
+1. **Install dependencies**
+```bash
+npm install
+```
+
+2. **Start the development server**
+```bash
+npm run dev
+```
+
+3. **Open in browser**: http://localhost:5173
+
+4. **Connect your wallet** and create a test token on devnet
+
+**Full guide**: See [User Guide](./docs/USER_GUIDE.md) for detailed steps
+
+### Deploy the Anchor Program
+
+```bash
+# Build the program
+anchor build
+
+# Deploy to devnet
+anchor deploy --provider.cluster devnet
+
+# Upload IDL so Explorer can decode instructions
+bash scripts/upload-idl.sh devnet
+```
+
+**Build issues?** See [Build Notes](./docs/BUILD_NOTES.md)
 
 ## Auto-collect Token Transfer Fees
 

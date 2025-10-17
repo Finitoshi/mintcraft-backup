@@ -85,6 +85,10 @@ describe('useTokenMinting', () => {
       imageFile: new File([new ArrayBuffer(1)], 'test.png', { type: 'image/png' }),
       maxWalletPercentage: '',
       enableMaxWallet: false,
+      transferFeePercentage: '2.5',
+      transferFeeMaxTokens: '',
+      transferFeeTreasuryAddress: '',
+      transferFeeSplitRecipients: [],
     };
 
     const extensions: any[] = [];
@@ -128,6 +132,10 @@ describe('useTokenMinting', () => {
       imageFile: null,
       maxWalletPercentage: '',
       enableMaxWallet: false,
+      transferFeePercentage: '2.5',
+      transferFeeMaxTokens: '',
+      transferFeeTreasuryAddress: '',
+      transferFeeSplitRecipients: [],
     };
     const extensions: any[] = [];
 
@@ -150,6 +158,10 @@ describe('useTokenMinting', () => {
       imageFile: null,
       maxWalletPercentage: '5',
       enableMaxWallet: true,
+      transferFeePercentage: '2.5',
+      transferFeeMaxTokens: '',
+      transferFeeTreasuryAddress: '',
+      transferFeeSplitRecipients: [],
     };
 
     const extensions: any[] = [];
@@ -164,5 +176,167 @@ describe('useTokenMinting', () => {
     expect(configArg.extensions.transferHook.programId).toEqual(
       MAX_WALLET_HOOK_PROGRAM_ID
     );
+  });
+
+  it('should configure transfer fee extension using provided values', async () => {
+    const { result } = renderHook(() => useTokenMinting(WalletAdapterNetwork.Devnet));
+
+    const formData = {
+      name: 'Tax Token',
+      symbol: 'TAX',
+      decimals: '9',
+      supply: '1000000',
+      description: 'A token with transfer tax',
+      imageFile: null,
+      maxWalletPercentage: '',
+      enableMaxWallet: false,
+      transferFeePercentage: '1.75',
+      transferFeeMaxTokens: '500',
+      transferFeeTreasuryAddress: walletKeypair.publicKey.toBase58(),
+      transferFeeSplitRecipients: [],
+    };
+
+    const extensions = [
+      {
+        id: 'transfer-fee',
+        name: 'Transfer Fee',
+        description: '',
+        enabled: true,
+        category: 'fee',
+        riskLevel: 'low',
+      },
+    ];
+
+    await act(async () => {
+      await result.current.mintToken(formData as any, extensions as any);
+    });
+
+    const configArg = buildTokenCreationTransactionMock!.mock.calls[0][1];
+    expect(configArg.extensions.transferFee).toBeDefined();
+    expect(configArg.extensions.transferFee.feeBasisPoints).toBe(175);
+    expect(configArg.extensions.transferFee.maxFee).toBe(BigInt('500000000000'));
+    expect(configArg.extensions.transferFee.withdrawWithheldAuthority.toBase58()).toBe(
+      walletKeypair.publicKey.toBase58()
+    );
+    expect(configArg.transferFeeTreasury?.toBase58()).toBe(walletKeypair.publicKey.toBase58());
+  });
+
+  it('should default transfer fee max to total supply when not provided', async () => {
+    const { result } = renderHook(() => useTokenMinting(WalletAdapterNetwork.Devnet));
+
+    const formData = {
+      name: 'Tax Token',
+      symbol: 'SUPPLY',
+      decimals: '9',
+      supply: '1000000',
+      description: 'Defaults max fee to supply',
+      imageFile: null,
+      maxWalletPercentage: '',
+      enableMaxWallet: false,
+      transferFeePercentage: '0.05',
+      transferFeeMaxTokens: '',
+      transferFeeTreasuryAddress: walletKeypair.publicKey.toBase58(),
+      transferFeeSplitRecipients: [],
+    };
+
+    const extensions = [
+      {
+        id: 'transfer-fee',
+        name: 'Transfer Fee',
+        description: '',
+        enabled: true,
+        category: 'fee',
+        riskLevel: 'low',
+      },
+    ];
+
+    await act(async () => {
+      await result.current.mintToken(formData as any, extensions as any);
+    });
+
+    const configArg = buildTokenCreationTransactionMock!.mock.calls[0][1];
+    expect(configArg.extensions.transferFee).toBeDefined();
+    expect(configArg.extensions.transferFee.feeBasisPoints).toBe(5);
+    expect(configArg.extensions.transferFee.maxFee).toBe(BigInt('1000000000000000'));
+    expect(configArg.extensions.transferFee.withdrawWithheldAuthority.toBase58()).toBe(
+      walletKeypair.publicKey.toBase58()
+    );
+    expect(configArg.transferFeeTreasury?.toBase58()).toBe(walletKeypair.publicKey.toBase58());
+  });
+
+  it('should error when split recipients include an invalid address', async () => {
+    const { result } = renderHook(() => useTokenMinting(WalletAdapterNetwork.Devnet));
+
+    const formData = {
+      name: 'Split Token',
+      symbol: 'SPLIT',
+      decimals: '9',
+      supply: '1000000',
+      description: 'Invalid split recipient should fail',
+      imageFile: null,
+      maxWalletPercentage: '',
+      enableMaxWallet: false,
+      transferFeePercentage: '2',
+      transferFeeMaxTokens: '',
+      transferFeeTreasuryAddress: walletKeypair.publicKey.toBase58(),
+      transferFeeSplitRecipients: [
+        { address: 'not-a-pubkey', percentage: '50' },
+      ],
+    };
+
+    const extensions = [
+      {
+        id: 'transfer-fee',
+        name: 'Transfer Fee',
+        description: '',
+        enabled: true,
+        category: 'fee',
+        riskLevel: 'low',
+      },
+    ];
+
+    await act(async () => {
+      await result.current.mintToken(formData as any, extensions as any);
+    });
+
+    expect(result.current.status.step).toBe('error');
+    expect(result.current.status.message).toContain('split recipient wallet address');
+  });
+
+  it('should error when transfer fee treasury wallet is missing', async () => {
+    const { result } = renderHook(() => useTokenMinting(WalletAdapterNetwork.Devnet));
+
+    const formData = {
+      name: 'Tax Token',
+      symbol: 'ERR',
+      decimals: '9',
+      supply: '1000000',
+      description: 'Missing treasury should fail',
+      imageFile: null,
+      maxWalletPercentage: '',
+      enableMaxWallet: false,
+      transferFeePercentage: '1',
+      transferFeeMaxTokens: '',
+      transferFeeTreasuryAddress: '',
+      transferFeeSplitRecipients: [],
+    };
+
+    const extensions = [
+      {
+        id: 'transfer-fee',
+        name: 'Transfer Fee',
+        description: '',
+        enabled: true,
+        category: 'fee',
+        riskLevel: 'low',
+      },
+    ];
+
+    await act(async () => {
+      await result.current.mintToken(formData as any, extensions as any);
+    });
+
+    expect(result.current.status.step).toBe('error');
+    expect(result.current.status.message).toContain('treasury wallet');
   });
 });

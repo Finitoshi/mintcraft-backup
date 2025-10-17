@@ -7,6 +7,7 @@ import {
   createInitializeNonTransferableMintInstruction,
   createInitializeDefaultAccountStateInstruction,
   createInitializeMintCloseAuthorityInstruction,
+  createInitializeTransferHookInstruction,
   getMintLen,
   ExtensionType,
 } from '@solana/spl-token';
@@ -37,8 +38,9 @@ export class TokenExtensionHandler {
    */
   createExtensionInstructions(
     mintPublicKey: PublicKey,
-    extensions: TokenConfig['extensions']
+    config: TokenConfig
   ): TransactionInstruction[] {
+    const { extensions } = config;
     const instructions: TransactionInstruction[] = [];
 
     if (extensions.transferFee) {
@@ -121,8 +123,18 @@ export class TokenExtensionHandler {
     }
 
     if (extensions.transferHook) {
-      console.log('🔗 Adding Transfer Hook extension (placeholder)...');
-      // TODO: Add actual instruction for Transfer Hook
+      console.log('🔗 Adding Transfer Hook extension...');
+      const transferHookAuthority =
+        extensions.transferHook.authority ?? config.authorities.mintAuthority;
+
+      instructions.push(
+        createInitializeTransferHookInstruction(
+          mintPublicKey,
+          transferHookAuthority,
+          extensions.transferHook.programId,
+          TOKEN_2022_PROGRAM_ID
+        )
+      );
     }
 
     return instructions;

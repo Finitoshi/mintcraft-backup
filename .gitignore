@@ -28,3 +28,6 @@ solana.git/
 tmp/
 
 scripts/collect-fees.env
+scripts/reflections.env
+~/.config/solana/test-wallets/
+.mintcraft/

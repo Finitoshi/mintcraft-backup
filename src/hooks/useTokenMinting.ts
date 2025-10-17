@@ -47,6 +47,58 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
     }
 
     try {
+      const enabledExtensions = extensions.filter(
+        (ext) => ext.enabled && ext.available !== false
+      );
+      const transferFeeExtensionEnabled = enabledExtensions.some(
+        (ext) => ext.id === 'transfer-fee'
+      );
+      const splitRecipientsInput = transferFeeExtensionEnabled
+        ? formData.transferFeeSplitRecipients ?? []
+        : [];
+      let splitRecipientsPayload: Array<{ address: string; percent: number }> = [];
+
+      if (transferFeeExtensionEnabled) {
+        const cleanedSplitRecipients = splitRecipientsInput
+          .map((recipient) => ({
+            address: recipient.address?.trim() ?? '',
+            percentage: recipient.percentage?.trim() ?? '',
+          }))
+          .filter((recipient) => recipient.address && recipient.percentage);
+
+        if (cleanedSplitRecipients.length > 0) {
+          splitRecipientsPayload = cleanedSplitRecipients.map((recipient) => {
+            let recipientKey: PublicKey;
+            try {
+              recipientKey = new PublicKey(recipient.address);
+            } catch (error) {
+              throw new Error(`Invalid split recipient wallet address: ${recipient.address}`);
+            }
+
+            const percentValue = Number.parseFloat(recipient.percentage);
+            if (Number.isNaN(percentValue) || percentValue <= 0) {
+              throw new Error(
+                `Split percentage must be a positive number (recipient: ${recipient.address})`
+              );
+            }
+
+            return {
+              address: recipientKey.toBase58(),
+              percent: percentValue,
+            };
+          });
+
+          const totalSplitPercent = splitRecipientsPayload.reduce(
+            (sum, recipient) => sum + recipient.percent,
+            0
+          );
+
+          if (totalSplitPercent <= 0) {
+            throw new Error('Split configuration must allocate more than 0%');
+          }
+        }
+      }
+
       let metadataUri = '';
 
       // Upload to IPFS via API if image provided
@@ -60,6 +112,21 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
         formDataToSend.append('description', formData.description);
         if (formData.enableMaxWallet && formData.maxWalletPercentage) {
           formDataToSend.append('maxWalletPercentage', formData.maxWalletPercentage);
+        }
+        if (transferFeeExtensionEnabled && formData.transferFeePercentage) {
+          formDataToSend.append('transferFeePercentage', formData.transferFeePercentage);
+        }
+        if (transferFeeExtensionEnabled && formData.transferFeeMaxTokens) {
+          formDataToSend.append('transferFeeMaxTokens', formData.transferFeeMaxTokens);
+        }
+        if (transferFeeExtensionEnabled && formData.transferFeeTreasuryAddress) {
+          formDataToSend.append('transferFeeTreasuryAddress', formData.transferFeeTreasuryAddress);
+        }
+        if (splitRecipientsPayload.length > 0) {
+          formDataToSend.append(
+            'transferFeeSplitRecipients',
+            JSON.stringify(splitRecipientsPayload)
+          );
         }
         formDataToSend.append('decimals', formData.decimals);
         formDataToSend.append('supply', formData.supply);
@@ -84,10 +151,6 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
       }
 
       // Build token configuration
-      const enabledExtensions = extensions.filter(
-        (ext) => ext.enabled && ext.available !== false
-      );
-
       const rawMaxWallet = formData.maxWalletPercentage?.trim() ?? '';
       const shouldEnableMaxWallet =
         formData.enableMaxWallet && rawMaxWallet.length > 0;
@@ -110,8 +173,72 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
       }
 
       const supplyBaseUnits = convertTokenAmountToBaseUnits(formData.supply, decimalsNumber);
-      if (supplyBaseUnits <= BigInt(0)) {
-        throw new Error('Supply must be greater than zero');
+      if (supplyBaseUnits < BigInt(0)) {
+        throw new Error('Supply cannot be negative');
+      }
+
+      const extensionsConfig: TokenConfig['extensions'] = {};
+      let transferFeeTreasuryAuthority: PublicKey | undefined;
+
+      if (transferFeeExtensionEnabled) {
+        const rawTransferFeePercentage = formData.transferFeePercentage?.trim() ?? '';
+        if (!rawTransferFeePercentage) {
+          throw new Error('Transfer fee percentage is required when the Transfer Fee extension is enabled');
+        }
+
+        const rawTreasuryAddress = formData.transferFeeTreasuryAddress?.trim() ?? '';
+        if (!rawTreasuryAddress) {
+          throw new Error('A treasury wallet is required when the Transfer Fee extension is enabled');
+        }
+
+        let treasuryAuthority: PublicKey;
+        try {
+          treasuryAuthority = new PublicKey(rawTreasuryAddress);
+        } catch (error) {
+          throw new Error('Invalid treasury wallet address for transfer fee collection');
+        }
+        transferFeeTreasuryAuthority = treasuryAuthority;
+
+        const transferFeePercentage = Number.parseFloat(rawTransferFeePercentage);
+        if (Number.isNaN(transferFeePercentage) || transferFeePercentage <= 0) {
+          throw new Error('Transfer fee percentage must be a positive number');
+        }
+
+        if (transferFeePercentage > 100) {
+          throw new Error('Transfer fee percentage cannot exceed 100%');
+        }
+
+        let feeBasisPoints = Math.round(transferFeePercentage * 100);
+        if (feeBasisPoints === 0) {
+          feeBasisPoints = 1;
+        }
+        feeBasisPoints = Math.min(feeBasisPoints, 10_000);
+
+        const rawMaxFee = formData.transferFeeMaxTokens?.trim() ?? '';
+        let maxFee: bigint;
+
+        if (rawMaxFee) {
+          try {
+            maxFee = convertTokenAmountToBaseUnits(rawMaxFee, decimalsNumber);
+          } catch (error) {
+            const details =
+              error instanceof Error ? error.message : 'unknown parsing error';
+            throw new Error(`Invalid max fee per transfer: ${details}`);
+          }
+
+          if (maxFee <= BigInt(0)) {
+            throw new Error('Max fee per transfer must be greater than zero');
+          }
+        } else {
+          maxFee = supplyBaseUnits;
+        }
+
+        extensionsConfig.transferFee = {
+          feeBasisPoints,
+          maxFee,
+          transferFeeConfigAuthority: publicKey,
+          withdrawWithheldAuthority: treasuryAuthority,
+        };
       }
 
       const tokenConfig: TokenConfig = {
@@ -124,25 +251,73 @@ export function useTokenMinting(network: WalletAdapterNetwork, customRpcUrl?: st
           ? { maxWalletPercentage: maxWalletPercentageValue }
           : {}),
         ...(metadataUri ? { metadataUri } : {}),
-        extensions: {},
+        ...(transferFeeTreasuryAuthority
+          ? { transferFeeTreasury: transferFeeTreasuryAuthority }
+          : {}),
+        extensions: extensionsConfig,
         authorities: {
           mintAuthority: publicKey,
           freezeAuthority: publicKey,
         },
       };
 
-      // Configure extensions  
+      // Configure reflections if enabled
+      const reflectionsEnabled = enabledExtensions.some((ext) => ext.id === 'reflections');
+      if (reflectionsEnabled) {
+        const minHoldingStr = formData.reflectionMinHolding?.trim() ?? '';
+        const gasRebateStr = formData.reflectionGasRebatePercentage?.trim() ?? '2';
+        const excludedWalletsStr = formData.reflectionExcludedWallets?.trim() ?? '';
+
+        if (!minHoldingStr) {
+          throw new Error('Minimum holding is required when Reflections is enabled');
+        }
+
+        const minHoldingNumber = Number.parseFloat(minHoldingStr);
+        if (Number.isNaN(minHoldingNumber) || minHoldingNumber < 0) {
+          throw new Error('Minimum holding must be a positive number');
+        }
+
+        const gasRebateNumber = Number.parseFloat(gasRebateStr);
+        if (Number.isNaN(gasRebateNumber) || gasRebateNumber < 0 || gasRebateNumber > 10) {
+          throw new Error('Gas rebate percentage must be between 0 and 10');
+        }
+
+        // Convert minimum holding to base units
+        const minHoldingBaseUnits = convertTokenAmountToBaseUnits(
+          minHoldingStr,
+          decimalsNumber
+        );
+
+        // Convert gas rebate percentage to basis points (e.g., 2% = 200 bps)
+        const gasRebateBps = Math.round(gasRebateNumber * 100);
+
+        // Parse excluded wallets
+        const excludedWallets: PublicKey[] = [];
+        if (excludedWalletsStr) {
+          const walletAddresses = excludedWalletsStr
+            .split(',')
+            .map((addr) => addr.trim())
+            .filter(Boolean);
+
+          for (const addr of walletAddresses) {
+            try {
+              excludedWallets.push(new PublicKey(addr));
+            } catch (error) {
+              throw new Error(`Invalid excluded wallet address: ${addr}`);
+            }
+          }
+        }
+
+        extensionsConfig.reflections = {
+          minHolding: minHoldingBaseUnits,
+          gasRebateBps,
+          excludedWallets,
+        };
+      }
+
+      // Configure extensions
       enabledExtensions.forEach(ext => {
         switch (ext.id) {
-          case 'transfer-fee':
-            tokenConfig.extensions.transferFee = {
-              feeBasisPoints: 250, // 2.5%
-              maxFee: BigInt(1000 * Math.pow(10, tokenConfig.decimals)),
-              transferFeeConfigAuthority: publicKey,
-              withdrawWithheldAuthority: publicKey,
-            };
-            break;
-          
           case 'interest-bearing':
             tokenConfig.extensions.interestBearing = {
               rateAuthority: publicKey,

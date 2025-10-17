@@ -4,19 +4,58 @@
 
 ### Added
 
+- **Hourly Reflections System:** Complete automatic reflection distribution system for Token-2022 tokens
+  - On-chain reflection config with `initialize_reflection_config` and `claim_reflection` instructions in Anchor program
+  - Off-chain hourly distribution script (`npm run distribute:reflections`) that snapshots holders and distributes proportionally
+  - Gas rebate mechanism: Users can claim early with a configurable percentage deducted (default 2%), offsetting treasury's SOL costs
+  - Configurable minimum holding requirement to receive reflections
+  - Excluded wallets list (LP pools, CEX wallets, treasury auto-excluded)
+  - Cron job installer (`scripts/install-reflection-cron.sh`) for automated hourly distributions
+  - Frontend UI toggle for enabling reflections with configuration inputs (min holding, gas rebate %, excluded wallets)
+  - TypeScript types for reflection config, user claim state, and claim results
+  - Transaction builder support for initializing reflection config during token creation
+  - **Reflection Dashboard** (`/reflections` route) with comprehensive stats:
+    - Real-time token balance and fee pool display
+    - User's share percentage calculation
+    - Estimated reflection amount with gas rebate breakdown
+    - Claim button for early withdrawal (with gas rebate deduction)
+    - Token information card with mint address and explorer links
+    - Reflection configuration display (min holding, gas rebate, schedule)
+    - Navigation link from main forge page
 - Transfer fee configuration controls for Token-2022 mints, including UI inputs for percentage and optional max-per-transfer caps that flow into the mint builder.
 - Treasury wallet support for transfer fees, plus a helper script (`npm run collect:fees`) to sweep withheld taxes into the treasury on a schedule.
 - Cron-friendly wrapper with installation script (`scripts/install-fee-cron.sh`) and env template so creators can enable hourly fee collection with one command.
 - Optional split distributions for collected taxes with `--split` / `SPLIT_RECIPIENTS`, including automatic ATA creation and support for a dedicated treasury signer.
+- Transfer-fee form now supports configuring optional split recipients so creators can capture multi-treasury payout plans alongside the main withdraw authority.
 
 ### Changed
 
+- **Reflection Integration:** Token minting flow now supports configuring and initializing reflection parameters
+  - `TokenFormData` interface extended with `reflectionMinHolding`, `reflectionGasRebatePercentage`, and `reflectionExcludedWallets`
+  - `useTokenMinting` hook validates and converts reflection inputs to on-chain format
+  - `TokenConfig` type includes reflection extension configuration
+- **Anchor Program Build:** Updated dependencies and fixed compilation issues
+  - Added `init-if-needed` feature to anchor-lang for user claim state initialization
+  - Resolved TokenAccount naming conflicts by aliasing spl-token-2022 types
+  - Fixed InterfaceAccount usage for Token-2022 compatibility
 - IPFS metadata uploads now include transfer fee traits and updated tests cover the new blanket tax flow.
 - README now walks through copying `scripts/collect-fees.env` and running `scripts/install-fee-cron.sh` to enable hourly sweeps.
 - Transfer console inspects mint TLV data and falls back to standard transfers when no hook is configured, keeping fee-only tokens working out of the box.
+
 ### Fixed
 
+- **Reflection Initialization Transaction Fix:** Corrected the `initialize_reflection_config` instruction to match Anchor's IDL format
+  - Fixed instruction discriminator from 1-byte `[0]` to correct 8-byte Anchor hash `[113, 189, 201, 109, 238, 114, 172, 13]`
+  - Corrected account ordering to match IDL: payer, authority, mint, config, system_program
+  - Fixed instruction data layout: 8 bytes discriminator + 8 bytes u64 (min_holding) + 2 bytes u16 (gas_rebate_bps)
+  - **Testing:** Successfully created Token-2022 mint `2EycdJ8rshabeCSs4dhBZ2tTj6md4rABDcgHbctZPKAN` on devnet with reflections enabled
+  - **Verified:** End-to-end flow working: token creation → transfer fees (5%) → fee collection (750 tokens) → reflection distribution (proportional to holdings)
 - Prevented transfer fee configuration without a treasury authority by validating wallet addresses during minting.
+- Fixed Anchor program compilation errors related to reflection instructions
+  - Resolved `init_if_needed` requires feature flag error
+  - Fixed TokenAccount type conflicts between anchor-spl and spl-token-2022
+  - Updated ClaimReflection struct to use InterfaceAccount for Token-2022 accounts
+  - Added proper initialization checks for UserClaimState on first claim
 
 ## [1.0.9] - 2025-10-15
 

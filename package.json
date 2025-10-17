@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "collect:fees": "node scripts/collect-transfer-fees.mjs",
+    "distribute:reflections": "node scripts/distribute-reflections.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -47,9 +49,11 @@
     "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/wallet-adapter-wallets": "^0.19.37",
     "@solana/web3.js": "^1.98.2",
+    "@noble/hashes": "^1.5.0",
     "@metaplex-foundation/mpl-token-metadata": "^3.3.0",
     "@supabase/supabase-js": "^2.50.3",
     "@tanstack/react-query": "^5.56.2",
+    "bs58": "^6.0.0",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

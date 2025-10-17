@@ -11,6 +11,10 @@ import * as Token2022Program from '@solana/spl-token';
 import * as MPLMetadata from '@metaplex-foundation/mpl-token-metadata';
 import { TokenConfig } from './types';
 import { TokenExtensionHandler } from './extensions';
+import {
+  MAX_WALLET_BPS_CAP,
+  createInitializeMaxWalletConfigInstruction,
+} from './max-wallet';
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
@@ -67,7 +71,7 @@ export class TransactionBuilder {
     // Add extension instructions BEFORE InitializeMint
     const extensionInstructions = this.extensionHandler.createExtensionInstructions(
       mintKeypair.publicKey,
-      config.extensions
+      config
     );
     if (extensionInstructions.length > 0) {
       transaction.add(...extensionInstructions);
@@ -88,7 +92,7 @@ export class TransactionBuilder {
     // Create associated token account for initial minting
     console.log('🏦 Adding Associated Token Account instruction...');
     transaction.add(
-      Token2022Program.createAssociatedTokenAccountInstruction(
+      Token2022Program.createAssociatedTokenAccountIdempotentInstruction(
         payerWallet,
         associatedTokenAccount,
         payerWallet,
@@ -99,15 +103,15 @@ export class TransactionBuilder {
     );
 
     // Mint initial supply to creator
-    if (config.supply > 0) {
+    if (config.supplyBaseUnits > BigInt(0)) {
       console.log('💰 Adding Mint To instruction for initial supply...');
-      const mintAmount = BigInt(config.supply) * BigInt(Math.pow(10, config.decimals));
       transaction.add(
-        Token2022Program.createMintToInstruction(
+        Token2022Program.createMintToCheckedInstruction(
           mintKeypair.publicKey,
           associatedTokenAccount,
           payerWallet,
-          mintAmount,
+          config.supplyBaseUnits,
+          config.decimals,
           [],
           Token2022Program.TOKEN_2022_PROGRAM_ID
         )
@@ -174,6 +178,91 @@ export class TransactionBuilder {
 
     transaction.add(metadataInstruction);
 
+    if (
+      typeof config.maxWalletPercentage === 'number' &&
+      config.maxWalletPercentage > 0
+    ) {
+      const maxWalletBps = Math.round(config.maxWalletPercentage * 100);
+      const clampedBps = Math.min(maxWalletBps, MAX_WALLET_BPS_CAP);
+
+      console.log('🛡️ Initializing max wallet config with', clampedBps, 'bps');
+      transaction.add(
+        createInitializeMaxWalletConfigInstruction({
+          payer: payerWallet,
+          authority: payerWallet,
+          mint: mintKeypair.publicKey,
+          maxWalletBps: clampedBps,
+        })
+      );
+    }
+
+    // Initialize reflection config if reflections are enabled
+    if (config.extensions.reflections) {
+      console.log('💎 Initializing reflection config...');
+      const reflectionInstruction = await this.createInitializeReflectionInstruction(
+        mintKeypair.publicKey,
+        payerWallet,
+        config.extensions.reflections
+      );
+      transaction.add(reflectionInstruction);
+    }
+
     return { transaction, associatedTokenAccount };
+  }
+
+  /**
+   * Create instruction to initialize reflection config
+   */
+  private async createInitializeReflectionInstruction(
+    mint: PublicKey,
+    authority: PublicKey,
+    reflectionsConfig: {
+      minHolding: bigint;
+      gasRebateBps: number;
+      excludedWallets: PublicKey[];
+    }
+  ): Promise<TransactionInstruction> {
+    // MintCraft program deployed on devnet
+    const MINTCRAFT_PROGRAM_ID = new PublicKey('Hbcw8A9kdqWHt1p5C6XY1864t4PjNWa8zaiysfZMqBn4');
+
+    // Derive reflection config PDA
+    const [reflectionConfigPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('reflection-config'), mint.toBuffer()],
+      MINTCRAFT_PROGRAM_ID
+    );
+
+    // Anchor instruction discriminator from IDL: initialize_reflection_config
+    const discriminator = Buffer.from([113, 189, 201, 109, 238, 114, 172, 13]);
+
+    // Instruction data: discriminator (8 bytes) + min_holding (u64, 8 bytes) + gas_rebate_bps (u16, 2 bytes)
+    const instructionData = Buffer.alloc(18);
+    discriminator.copy(instructionData, 0);
+
+    // Write min_holding (u64, little-endian)
+    instructionData.writeBigUInt64LE(reflectionsConfig.minHolding, 8);
+
+    // Write gas_rebate_bps (u16, little-endian)
+    instructionData.writeUInt16LE(reflectionsConfig.gasRebateBps, 16);
+
+    console.log('💎 Reflection config:', {
+      mint: mint.toBase58(),
+      reflectionConfigPda: reflectionConfigPda.toBase58(),
+      minHolding: reflectionsConfig.minHolding.toString(),
+      gasRebateBps: reflectionsConfig.gasRebateBps,
+      excludedWallets: reflectionsConfig.excludedWallets.length,
+    });
+
+    // Accounts must match IDL order: payer, authority, mint, config, system_program
+    return new TransactionInstruction({
+      programId: MINTCRAFT_PROGRAM_ID,
+      keys: [
+        { pubkey: authority, isSigner: true, isWritable: true },  // payer
+        { pubkey: authority, isSigner: true, isWritable: false }, // authority (same as payer)
+        { pubkey: mint, isSigner: false, isWritable: false },     // mint
+        { pubkey: reflectionConfigPda, isSigner: false, isWritable: true }, // config
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+      ],
+      data: instructionData,
+    });
   }
 }

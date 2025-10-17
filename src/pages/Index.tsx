@@ -21,6 +21,7 @@ import { Coins, Hammer, Shield, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTokenMinting } from '@/hooks/useTokenMinting';
 import { TokenTransfer } from '@/components/TokenTransfer';
+import { Link } from 'react-router-dom';
 
 const DEFAULT_ADVANCED_FEATURES: AdvancedFeature[] = [
   { id: 'multi-asset-reflections', name: 'Multi-Asset Reflections', description: 'Withheld fees swap to SOL/USDC/BONK and auto-airdrop', type: 'TransferHook', enabled: false, category: 'transfer-hook', riskLevel: 'medium' },
@@ -35,6 +36,14 @@ const DEFAULT_EXTENSIONS: Token22Extension[] = [
     id: 'transfer-fee',
     name: 'Transfer Fee',
     description: 'Charge a fee on every token transfer, withheld to a configurable account',
+    enabled: false,
+    category: 'fee',
+    riskLevel: 'low',
+  },
+  {
+    id: 'reflections',
+    name: 'Hourly Reflections',
+    description: 'Automatically distribute collected fees to holders every hour (requires Transfer Fee)',
     enabled: false,
     category: 'fee',
     riskLevel: 'low',
@@ -124,7 +133,14 @@ function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
     decimals: '9',
     maxWalletPercentage: '',
     enableMaxWallet: false,
+    transferFeePercentage: '2.5',
+    transferFeeMaxTokens: '',
+    transferFeeTreasuryAddress: '',
+    transferFeeSplitRecipients: [],
     imageFile: null,
+    reflectionMinHolding: '1000',
+    reflectionGasRebatePercentage: '2',
+    reflectionExcludedWallets: '',
   });
 
   const { connected } = useWallet();
@@ -187,6 +203,8 @@ function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
   };
 
   const isFormValid = formData.name && formData.symbol && formData.supply && formData.decimals;
+  const transferFeeEnabled = extensions.some((ext) => ext.id === 'transfer-fee' && ext.enabled);
+  const reflectionsEnabled = extensions.some((ext) => ext.id === 'reflections' && ext.enabled);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -211,7 +229,14 @@ function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
             ⚡ Server & Wallet Connection
           </h3>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <NetworkToggle network={network} onNetworkChange={onNetworkChange} />
+            <div className="flex items-center gap-4">
+              <NetworkToggle network={network} onNetworkChange={onNetworkChange} />
+              <Link to="/reflections">
+                <Button variant="outline" className="minecraft-button">
+                  💎 Reflection Dashboard
+                </Button>
+              </Link>
+            </div>
             <WalletMultiButton className="minecraft-button !bg-emerald-500 hover:!bg-emerald-400 !text-white !border-emerald-600" />
           </div>
         </div>
@@ -229,10 +254,12 @@ function MintCraftApp({ network, onNetworkChange }: MintCraftAppProps) {
 
           <TabsContent value="basic">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <TokenForm 
-                formData={formData} 
+              <TokenForm
+                formData={formData}
                 onFormChange={setFormData}
                 onImageUpload={handleImageUpload}
+                transferFeeEnabled={transferFeeEnabled}
+                reflectionsEnabled={reflectionsEnabled}
               />
               <div className="space-y-8">
                 <Token22Extensions 

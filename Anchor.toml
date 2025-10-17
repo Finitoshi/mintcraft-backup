@@ -10,7 +10,7 @@ skip-lint = false
 mintcraft = "9HeGKECKeVEK6XEjjqTdwjReX2n28xdZJ8TSb4ibi9K1"
 
 [programs.devnet]
-mintcraft = "9HeGKECKeVEK6XEjjqTdwjReX2n28xdZJ8TSb4ibi9K1"
+mintcraft = "Hbcw8A9kdqWHt1p5C6XY1864t4PjNWa8zaiysfZMqBn4"
 
 [registry]
 url = "https://api.apr.dev"
