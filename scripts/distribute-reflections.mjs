@@ -7,11 +7,12 @@
  * 3. Filters by minimum holding requirement
  * 4. Excludes LP pools, treasury, and manually claimed users
  * 5. Calculates proportional reflection shares
- * 6. Distributes reflections automatically (treasury pays gas)
- * 7. Tracks who received reflections to prevent double-distribution
+ * 6. (Optional) Swaps collected fees to custom reward token via Jupiter
+ * 7. Distributes reflections automatically (treasury pays gas)
+ * 8. Tracks who received reflections to prevent double-distribution
  */
 
-import { Connection, PublicKey, Keypair, Transaction } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair, Transaction, VersionedTransaction } from '@solana/web3.js';
 import {
   getAccount,
   getMint,
@@ -19,7 +20,9 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   createTransferCheckedInstruction,
   TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
+import { createJupiterApiClient } from '@jup-ag/api';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -34,6 +37,13 @@ const config = {
 
   // RPC URL
   RPC_URL: process.env.RPC_URL || 'https://api.devnet.solana.com',
+
+  // Reward token mint (if different from fee collection token)
+  // Leave empty to distribute the same token that fees are collected in
+  REWARD_TOKEN_MINT: process.env.REWARD_TOKEN_MINT || '',
+
+  // Swap slippage tolerance in basis points (100 = 1%)
+  SWAP_SLIPPAGE_BPS: parseInt(process.env.SWAP_SLIPPAGE_BPS || '100', 10),
 
   // Minimum holding to receive reflections (in base units)
   MIN_HOLDING: process.env.MIN_HOLDING || '0',
@@ -74,6 +84,85 @@ function log(message, level = 'INFO') {
 function loadKeypair(path) {
   const secretKey = JSON.parse(readFileSync(path, 'utf8'));
   return Keypair.fromSecretKey(Uint8Array.from(secretKey));
+}
+
+// Determine which token program a mint uses
+async function getTokenProgramForMint(connection, mintAddress) {
+  try {
+    // Try Token-2022 first
+    await getMint(connection, mintAddress, 'confirmed', TOKEN_2022_PROGRAM_ID);
+    return TOKEN_2022_PROGRAM_ID;
+  } catch {
+    // Fall back to regular Token Program
+    return TOKEN_PROGRAM_ID;
+  }
+}
+
+// Swap tokens using Jupiter
+async function swapTokens(
+  connection,
+  treasuryKeypair,
+  fromMint,
+  toMint,
+  amount,
+  slippageBps
+) {
+  log(`Initiating swap: ${amount} of ${fromMint.toBase58()} -> ${toMint.toBase58()}`);
+
+  // Initialize Jupiter API client
+  const jupiterApi = createJupiterApiClient();
+
+  // Get quote for swap
+  log('Fetching Jupiter quote...');
+  const quoteResponse = await jupiterApi.quoteGet({
+    inputMint: fromMint.toBase58(),
+    outputMint: toMint.toBase58(),
+    amount: amount.toString(),
+    slippageBps,
+  });
+
+  if (!quoteResponse) {
+    throw new Error('Failed to get Jupiter quote');
+  }
+
+  log(`Quote received: ${quoteResponse.outAmount} output tokens expected`);
+  log(`Price impact: ${quoteResponse.priceImpactPct || 0}%`);
+
+  // Get swap transaction
+  const swapResponse = await jupiterApi.swapPost({
+    swapRequest: {
+      quoteResponse,
+      userPublicKey: treasuryKeypair.publicKey.toBase58(),
+      wrapAndUnwrapSol: true,
+      dynamicComputeUnitLimit: true,
+      prioritizationFeeLamports: 'auto',
+    },
+  });
+
+  // Deserialize the transaction
+  const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
+  const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+
+  // Sign the transaction
+  transaction.sign([treasuryKeypair]);
+
+  // Send and confirm
+  log('Sending swap transaction...');
+  const signature = await connection.sendRawTransaction(transaction.serialize(), {
+    skipPreflight: false,
+    maxRetries: 3,
+  });
+
+  log(`Swap transaction sent: ${signature}`);
+
+  await connection.confirmTransaction(signature, 'confirmed');
+  log(`✅ Swap confirmed: ${signature}`, 'SUCCESS');
+
+  return {
+    signature,
+    inputAmount: BigInt(quoteResponse.inAmount),
+    outputAmount: BigInt(quoteResponse.outAmount),
+  };
 }
 
 // Load distribution state (tracks who received reflections)
@@ -200,14 +289,15 @@ async function distributeReflections(
   connection,
   treasuryKeypair,
   reflections,
-  mintAddress,
-  decimals
+  rewardMintAddress,
+  rewardMintDecimals,
+  rewardTokenProgram
 ) {
   const treasuryTokenAccount = getAssociatedTokenAddressSync(
-    mintAddress,
+    rewardMintAddress,
     treasuryKeypair.publicKey,
     false,
-    TOKEN_2022_PROGRAM_ID
+    rewardTokenProgram
   );
 
   let successCount = 0;
@@ -225,10 +315,10 @@ async function distributeReflections(
     for (const reflection of batch) {
       // Get or create recipient ATA
       const recipientAta = getAssociatedTokenAddressSync(
-        mintAddress,
+        rewardMintAddress,
         reflection.owner,
         false,
-        TOKEN_2022_PROGRAM_ID
+        rewardTokenProgram
       );
 
       // Add create ATA instruction (idempotent)
@@ -237,8 +327,8 @@ async function distributeReflections(
           treasuryKeypair.publicKey,
           recipientAta,
           reflection.owner,
-          mintAddress,
-          TOKEN_2022_PROGRAM_ID
+          rewardMintAddress,
+          rewardTokenProgram
         )
       );
 
@@ -246,13 +336,13 @@ async function distributeReflections(
       tx.add(
         createTransferCheckedInstruction(
           treasuryTokenAccount,
-          mintAddress,
+          rewardMintAddress,
           recipientAta,
           treasuryKeypair.publicKey,
           reflection.reflectionAmount,
-          decimals,
+          rewardMintDecimals,
           [],
-          TOKEN_2022_PROGRAM_ID
+          rewardTokenProgram
         )
       );
     }
@@ -296,44 +386,79 @@ async function runDistribution() {
     throw new Error('MINT_ADDRESS is required');
   }
 
-  const mintAddress = new PublicKey(config.MINT_ADDRESS);
+  const feeMintAddress = new PublicKey(config.MINT_ADDRESS);
   const treasuryKeypair = loadKeypair(config.TREASURY_KEYPAIR_PATH);
   const connection = new Connection(config.RPC_URL, 'confirmed');
 
   log(`Treasury: ${treasuryKeypair.publicKey.toBase58()}`);
-  log(`Mint: ${mintAddress.toBase58()}`);
+  log(`Fee Collection Mint: ${feeMintAddress.toBase58()}`);
+
+  // Determine reward token mint
+  const rewardMintAddress = config.REWARD_TOKEN_MINT
+    ? new PublicKey(config.REWARD_TOKEN_MINT)
+    : feeMintAddress;
+
+  const needsSwap = !rewardMintAddress.equals(feeMintAddress);
+
+  if (needsSwap) {
+    log(`Reward Token Mint: ${rewardMintAddress.toBase58()} (swap required)`);
+  } else {
+    log('Distributing same token as fees (no swap needed)');
+  }
 
   // Load previous distribution state
   const state = loadDistributionState();
 
-  // Get mint info
-  const mintInfo = await getMint(
+  // Get fee mint info and token program
+  const feeTokenProgram = await getTokenProgramForMint(connection, feeMintAddress);
+  const feeMintInfo = await getMint(
     connection,
-    mintAddress,
+    feeMintAddress,
     'confirmed',
-    TOKEN_2022_PROGRAM_ID
+    feeTokenProgram
   );
 
-  log(`Total supply: ${mintInfo.supply}`);
-  log(`Decimals: ${mintInfo.decimals}`);
+  log(`Fee token supply: ${feeMintInfo.supply}`);
+  log(`Fee token decimals: ${feeMintInfo.decimals}`);
+  log(`Fee token program: ${feeTokenProgram.toBase58()}`);
+
+  // Get reward mint info if different
+  let rewardMintInfo;
+  let rewardTokenProgram;
+
+  if (needsSwap) {
+    rewardTokenProgram = await getTokenProgramForMint(connection, rewardMintAddress);
+    rewardMintInfo = await getMint(
+      connection,
+      rewardMintAddress,
+      'confirmed',
+      rewardTokenProgram
+    );
+    log(`Reward token supply: ${rewardMintInfo.supply}`);
+    log(`Reward token decimals: ${rewardMintInfo.decimals}`);
+    log(`Reward token program: ${rewardTokenProgram.toBase58()}`);
+  } else {
+    rewardMintInfo = feeMintInfo;
+    rewardTokenProgram = feeTokenProgram;
+  }
 
   // Get treasury balance (fee pool)
-  const treasuryTokenAccount = getAssociatedTokenAddressSync(
-    mintAddress,
+  const treasuryFeeTokenAccount = getAssociatedTokenAddressSync(
+    feeMintAddress,
     treasuryKeypair.publicKey,
     false,
-    TOKEN_2022_PROGRAM_ID
+    feeTokenProgram
   );
 
-  const treasuryAccount = await getAccount(
+  const treasuryFeeAccount = await getAccount(
     connection,
-    treasuryTokenAccount,
+    treasuryFeeTokenAccount,
     'confirmed',
-    TOKEN_2022_PROGRAM_ID
+    feeTokenProgram
   );
 
-  const feePool = treasuryAccount.amount;
-  log(`Treasury balance (fee pool): ${feePool}`);
+  let feePool = treasuryFeeAccount.amount;
+  log(`Treasury fee balance (collected): ${feePool}`);
 
   const minPool = BigInt(config.MIN_TOTAL_POOL);
   if (feePool < minPool) {
@@ -341,8 +466,61 @@ async function runDistribution() {
     return;
   }
 
-  // Get all token holders
-  const allHolders = await getAllTokenHolders(connection, mintAddress);
+  // Swap to reward token if needed
+  let distributionPool = feePool;
+
+  if (needsSwap) {
+    log('=== Performing Token Swap ===');
+    try {
+      const swapResult = await swapTokens(
+        connection,
+        treasuryKeypair,
+        feeMintAddress,
+        rewardMintAddress,
+        feePool,
+        config.SWAP_SLIPPAGE_BPS
+      );
+
+      distributionPool = swapResult.outputAmount;
+      log(`Swapped ${swapResult.inputAmount} fee tokens for ${distributionPool} reward tokens`);
+    } catch (error) {
+      log(`Swap failed: ${error.message}`, 'ERROR');
+      log('Checking if treasury already has reward tokens...', 'INFO');
+
+      // Check if treasury has existing reward tokens
+      const treasuryRewardTokenAccount = getAssociatedTokenAddressSync(
+        rewardMintAddress,
+        treasuryKeypair.publicKey,
+        false,
+        rewardTokenProgram
+      );
+
+      try {
+        const treasuryRewardAccount = await getAccount(
+          connection,
+          treasuryRewardTokenAccount,
+          'confirmed',
+          rewardTokenProgram
+        );
+
+        distributionPool = treasuryRewardAccount.amount;
+        log(`Using existing treasury reward balance: ${distributionPool}`, 'INFO');
+
+        if (distributionPool < minPool) {
+          log(`Reward pool (${distributionPool}) below minimum (${minPool}). Skipping distribution.`, 'WARN');
+          return;
+        }
+      } catch {
+        log('No reward tokens available in treasury. Cannot distribute.', 'ERROR');
+        throw error;
+      }
+    }
+  } else {
+    log('Using fee pool directly for distribution (no swap needed)');
+  }
+
+  // Get all token holders (based on fee collection token for eligibility)
+  const allHolders = await getAllTokenHolders(connection, feeMintAddress);
 
   // Filter eligible holders
   const eligibleHolders = filterEligibleHolders(
@@ -359,8 +537,8 @@ async function runDistribution() {
     return;
   }
 
-  // Calculate reflections
-  const reflections = calculateReflections(eligibleHolders, feePool);
+  // Calculate reflections based on the distribution pool (after swap if needed)
+  const reflections = calculateReflections(eligibleHolders, distributionPool);
 
   // Limit to max distributions per run
   const reflectionsToDistribute = reflections.slice(0, config.MAX_DISTRIBUTIONS_PER_RUN);
@@ -372,13 +550,15 @@ async function runDistribution() {
     );
   }
 
-  // Distribute reflections
+  // Distribute reflections (using reward token)
+  log(`=== Distributing ${needsSwap ? 'Reward' : 'Fee'} Tokens ===`);
   const result = await distributeReflections(
     connection,
     treasuryKeypair,
     reflectionsToDistribute,
-    mintAddress,
-    mintInfo.decimals
+    rewardMintAddress,
+    rewardMintInfo.decimals,
+    rewardTokenProgram
   );
 
   // Update state
@@ -404,9 +584,13 @@ async function runDistribution() {
   log('=== Distribution Summary ===');
   log(`✅ Successful: ${result.successCount} holders`);
   log(`❌ Failed: ${result.failCount} holders`);
-  log(`💰 Total distributed: ${result.totalDistributed} (${Number(result.totalDistributed) / 10 ** mintInfo.decimals} tokens)`);
-  log(`📊 Remaining pool: ${feePool - result.totalDistributed}`);
+  log(`💰 Total distributed: ${result.totalDistributed} (${Number(result.totalDistributed) / 10 ** rewardMintInfo.decimals} reward tokens)`);
+  log(`📊 Remaining pool: ${distributionPool - result.totalDistributed}`);
   log(`📈 Lifetime distributed: ${state.totalDistributed}`);
+
+  if (needsSwap) {
+    log(`ℹ️  Reward token: ${rewardMintAddress.toBase58()}`);
+  }
 
   return result;
 }

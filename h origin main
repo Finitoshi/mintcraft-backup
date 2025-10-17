@@ -1,0 +1,73 @@
+[33mcommit 074e7e5c7627e43052547d0bf8ae9f12ee1cce47[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Finitoshi <Finitoshi@users.noreply.github.com>
+Date:   Fri Oct 17 00:54:15 2025 -0400
+
+    Fix reflection initialization and add comprehensive testing
+    
+    ## Fixed
+    - Corrected initialize_reflection_config instruction to match Anchor IDL format
+      - Fixed discriminator from 1-byte [0] to 8-byte Anchor hash [113, 189, 201, 109, 238, 114, 172, 13]
+      - Corrected account ordering: payer, authority, mint, config, system_program
+      - Fixed instruction data layout: 8 bytes discriminator + 8 bytes u64 + 2 bytes u16 = 18 bytes
+    
+    ## Tested
+    - Successfully created Token-2022 mint on devnet with reflections enabled
+    - Verified end-to-end flow: token creation → transfer fees (5%) → fee collection (750 tokens) → reflection distribution
+    - Test mint: 2EycdJ8rshabeCSs4dhBZ2tTj6md4rABDcgHbctZPKAN
+    
+    ## Added
+    - Comprehensive reflection system documentation
+    - CLAUDE.md with project overview and development guide
+    - Testing documentation (READY_TO_TEST.md, TESTING_QUICKSTART.md, TEST_IN_PROGRESS.md)
+    - User guides and technical documentation in docs/
+    - Reflection dashboard component
+    - Distribution scripts with env templates
+    
+    ## Changed
+    - Updated .gitignore to exclude sensitive files (env configs, test wallets, state files)
+    - Updated CHANGELOG with detailed testing results
+    
+    🤖 Generated with [Claude Code](https://claude.com/claude-code)
+    
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+ .gitignore                            |   3 [32m+[m
+ Anchor.toml                           |   2 [32m+[m[31m-[m
+ CHANGELOG.md                          |  39 [32m+++++[m
+ CLAUDE.md                             | 317 [32m+++++++++++++++++++++++++++++++++[m
+ Cargo.lock                            |   2 [32m+[m
+ DOCUMENTATION_INDEX.md                | 367 [32m++++++++++++++++++++++++++++++++++++++[m
+ README.md                             |  87 [32m++++++++[m[31m-[m
+ READY_TO_TEST.md                      | 412 [32m+++++++++++++++++++++++++++++++++++++++++++[m
+ TESTING_QUICKSTART.md                 | 266 [32m++++++++++++++++++++++++++++[m
+ TEST_IN_PROGRESS.md                   | 340 [32m++++++++++++++++++++++++++++++++++++[m
+ api/package-lock.json                 |  42 [31m-----[m
+ api/server.js                         | 119 [32m++++++++++++[m[31m-[m
+ docs/FAQ.md                           | 554 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ docs/FIXING_UNKNOWN_INSTRUCTIONS.md   | 235 [32m+++++++++++++++++++++++++[m
+ docs/QUICK_REFERENCE.md               | 185 [32m++++++++++++++++++++[m
+ docs/REFLECTIONS.md                   | 612 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ docs/REFLECTIONS_SUMMARY.md           | 390 [32m+++++++++++++++++++++++++++++++++++++++++[m
+ docs/REFLECTIONS_TESTING.md           | 707 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ docs/TECHNICAL_OVERVIEW.md            | 614 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ docs/TOKENOMICS_EXAMPLES.md           | 582 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ docs/USER_GUIDE.md                    | 427 [32m+++++++++++++++++++++++++++++++++++++++++++++[m
+ package-lock.json                     | 258 [32m++++++++++++[m[31m---------------[m
+ package.json                          |   6 [32m+[m[31m-[m
+ programs/mintcraft/Cargo.toml         |   4 [32m+[m[31m-[m
+ programs/mintcraft/src/lib.rs         | 211 [32m+++++++++++++++++++++[m[31m-[m
+ scripts/distribute-reflections.mjs    | 433 [32m+++++++++++++++++++++++++++++++++++++++++++++[m
+ scripts/install-reflection-cron.sh    |  84 [32m+++++++++[m
+ scripts/reflections.env.example       |  34 [32m++++[m
+ scripts/upload-idl.sh                 |  63 [32m+++++++[m
+ src/App.tsx                           |   2 [32m+[m
+ src/components/TokenForm.tsx          | 289 [32m+++++++++++++++++++++++++++++[m[31m-[m
+ src/hooks/useTokenMinting.test.ts     | 174 [32m++++++++++++++++++[m
+ src/hooks/useTokenMinting.ts          | 209 [32m++++++++++++++++++++[m[31m--[m
+ src/lib/ipfs.ts                       |  28 [32m++[m[31m-[m
+ src/lib/solana/extensions.ts          |  18 [32m+[m[31m-[m
+ src/lib/solana/transaction-builder.ts | 101 [32m++++++++++[m[31m-[m
+ src/lib/solana/types.ts               |  36 [32m+++[m[31m-[m
+ src/pages/Index.tsx                   |  33 [32m+++[m[31m-[m
+ src/pages/ReflectionDashboard.tsx     | 480 [32m++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ 39 files changed, 8531 insertions(+), 234 deletions(-)

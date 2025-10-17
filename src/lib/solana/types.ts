@@ -17,6 +17,7 @@ export interface TokenConfig {
       withdrawWithheldAuthority: PublicKey;
     };
     reflections?: {
+      rewardTokenMint?: PublicKey; // Optional: Custom token to distribute as rewards (defaults to same token)
       minHolding: bigint;
       gasRebateBps: number; // basis points (e.g., 200 = 2%)
       excludedWallets: PublicKey[];
@@ -58,6 +59,7 @@ export interface TokenCreationResult {
 
 export interface ReflectionConfig {
   authority: PublicKey;
+  rewardTokenMint: PublicKey; // The token to distribute as rewards
   minHolding: bigint;
   gasRebateBps: number;
   totalDistributed: bigint;

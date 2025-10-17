@@ -136,31 +136,43 @@ The script:
 
 ### Reflection System
 
-MintCraft includes an automated reflection distribution system for Token-2022 tokens:
+MintCraft includes an automated reflection distribution system for Token-2022 tokens with support for custom reward tokens:
 
 **On-Chain Components:**
-- `initialize_reflection_config`: Creates reflection configuration PDA seeded by `[b"reflection-config", mint.key()]`
+- `initialize_reflection_config`: Creates reflection configuration PDA with custom `reward_token_mint` field
 - `update_reflection_config`: Allows authority to update min holding and gas rebate settings
 - `claim_reflection`: Enables early claims with gas rebate deduction
 
 **Off-Chain Distribution:**
-- `scripts/distribute-reflections.mjs`: Automated hourly distribution script
-- Snapshots all eligible token holders
-- Distributes collected transfer fees proportionally based on holdings
+- `scripts/distribute-reflections.mjs`: Automated hourly distribution script with Jupiter swap integration
+- Snapshots all eligible token holders (based on fee collection token)
+- **Custom Reward Tokens**: Automatically swaps collected fees to a different reward token via Jupiter
+- Distributes reward tokens proportionally based on holdings
 - Excludes treasury, LP pools, and manually specified wallets
 - Requires minimum holding threshold to qualify
+- Fallback: Uses existing treasury balance if swap fails
 
 **Configuration:**
+- `REWARD_TOKEN_MINT`: Optional custom reward token (e.g., distribute USDC rewards while collecting fees in your token)
+- `SWAP_SLIPPAGE_BPS`: Slippage tolerance for Jupiter swaps (default 100 = 1%)
 - `MIN_HOLDING`: Minimum tokens required to receive reflections (in base units)
 - `GAS_REBATE_BPS`: Percentage deducted for early claims (default 200 = 2%)
 - `EXCLUDED_WALLETS`: Comma-separated list of wallet addresses to exclude
 - `MIN_TOTAL_POOL`: Minimum fee pool required before distribution
 
+**Use Cases:**
+- Distribute USDC/USDT stablecoin rewards while collecting fees in your token
+- Reward holders with established tokens (SOL, BONK, etc.)
+- Hybrid tokenomics with cross-token incentives
+
 **Testing Notes:**
 - Successfully tested on devnet with mint `2EycdJ8rshabeCSs4dhBZ2tTj6md4rABDcgHbctZPKAN`
 - Verified transfer fee collection (5%) and proportional reflection distribution
+- Jupiter integration tested with various token pairs
 - RPC limitation: Public devnet RPCs don't support `getProgramAccounts` for Token-2022, requiring manual account specification or premium RPC for auto-discovery
 - For production: Use Helius, QuickNode, or similar premium RPC providers for automatic holder discovery
+
+**Documentation:** See `docs/CUSTOM_REWARD_TOKENS.md` for detailed setup guide
 
 ### IPFS & Metadata
 
@@ -295,6 +307,8 @@ Reflection Distribution (`scripts/reflections.env`):
 - `MINT_ADDRESS`: Token mint to distribute reflections for
 - `TREASURY_KEYPAIR_PATH`: Treasury keypair that holds collected fees
 - `RPC_URL`: Solana RPC endpoint
+- `REWARD_TOKEN_MINT`: Optional custom reward token mint (swaps fees to this token before distributing)
+- `SWAP_SLIPPAGE_BPS`: Slippage tolerance for Jupiter swaps (default: 100 = 1%)
 - `MIN_HOLDING`: Minimum tokens to receive reflections (in base units)
 - `EXCLUDED_WALLETS`: Comma-separated list of addresses to exclude
 - `MAX_DISTRIBUTIONS_PER_RUN`: Batch size (default: 100)

@@ -217,6 +217,7 @@ export class TransactionBuilder {
     mint: PublicKey,
     authority: PublicKey,
     reflectionsConfig: {
+      rewardTokenMint?: PublicKey;
       minHolding: bigint;
       gasRebateBps: number;
       excludedWallets: PublicKey[];
@@ -231,25 +232,33 @@ export class TransactionBuilder {
       MINTCRAFT_PROGRAM_ID
     );
 
+    // Default to same token if no custom reward token specified (self-reflections)
+    const rewardTokenMint = reflectionsConfig.rewardTokenMint || mint;
+
     // Anchor instruction discriminator from IDL: initialize_reflection_config
     const discriminator = Buffer.from([113, 189, 201, 109, 238, 114, 172, 13]);
 
-    // Instruction data: discriminator (8 bytes) + min_holding (u64, 8 bytes) + gas_rebate_bps (u16, 2 bytes)
-    const instructionData = Buffer.alloc(18);
+    // Instruction data: discriminator (8) + reward_token_mint (32) + min_holding (u64, 8) + gas_rebate_bps (u16, 2) = 50 bytes
+    const instructionData = Buffer.alloc(50);
     discriminator.copy(instructionData, 0);
 
+    // Write reward_token_mint (Pubkey, 32 bytes)
+    rewardTokenMint.toBuffer().copy(instructionData, 8);
+
     // Write min_holding (u64, little-endian)
-    instructionData.writeBigUInt64LE(reflectionsConfig.minHolding, 8);
+    instructionData.writeBigUInt64LE(reflectionsConfig.minHolding, 40);
 
     // Write gas_rebate_bps (u16, little-endian)
-    instructionData.writeUInt16LE(reflectionsConfig.gasRebateBps, 16);
+    instructionData.writeUInt16LE(reflectionsConfig.gasRebateBps, 48);
 
     console.log('💎 Reflection config:', {
       mint: mint.toBase58(),
+      rewardTokenMint: rewardTokenMint.toBase58(),
       reflectionConfigPda: reflectionConfigPda.toBase58(),
       minHolding: reflectionsConfig.minHolding.toString(),
       gasRebateBps: reflectionsConfig.gasRebateBps,
       excludedWallets: reflectionsConfig.excludedWallets.length,
+      customReward: rewardTokenMint.equals(mint) ? 'No (self-reflections)' : 'Yes (custom token)',
     });
 
     // Accounts must match IDL order: payer, authority, mint, config, system_program

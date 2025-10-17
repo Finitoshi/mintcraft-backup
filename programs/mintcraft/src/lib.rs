@@ -215,6 +215,7 @@ pub mod mintcraft {
     /// Initialize reflection configuration for a token
     pub fn initialize_reflection_config(
         ctx: Context<InitializeReflectionConfig>,
+        reward_token_mint: Pubkey,
         min_holding: u64,
         gas_rebate_bps: u16,
     ) -> Result<()> {
@@ -225,12 +226,14 @@ pub mod mintcraft {
 
         let config = &mut ctx.accounts.config;
         config.authority = ctx.accounts.authority.key();
+        config.reward_token_mint = reward_token_mint;
         config.min_holding = min_holding;
         config.gas_rebate_bps = gas_rebate_bps;
         config.total_distributed = 0;
         config.bump = ctx.bumps.config;
 
         msg!("Reflection config initialized");
+        msg!("Reward token mint: {}", reward_token_mint);
         msg!("Min holding: {}", min_holding);
         msg!("Gas rebate BPS: {}", gas_rebate_bps);
 
@@ -562,6 +565,7 @@ pub struct ClaimReflection<'info> {
 #[account]
 pub struct ReflectionConfig {
     pub authority: Pubkey,
+    pub reward_token_mint: Pubkey,  // The token to distribute as rewards (can be same as main token or different)
     pub min_holding: u64,
     pub gas_rebate_bps: u16,
     pub total_distributed: u64,
@@ -569,7 +573,7 @@ pub struct ReflectionConfig {
 }
 
 impl ReflectionConfig {
-    pub const LEN: usize = 8 /*disc*/ + 32 + 8 + 2 + 8 + 1;
+    pub const LEN: usize = 8 /*disc*/ + 32 + 32 + 8 + 2 + 8 + 1;  // Added 32 bytes for reward_token_mint
 }
 
 #[account]
