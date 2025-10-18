@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
+const { createMeteoraPoolHandler } = require('./meteora-pool');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -213,6 +214,9 @@ app.post('/api/upload-to-ipfs', upload.single('image'), async (req, res) => {
     });
   }
 });
+
+// Meteora pool creation endpoint
+app.post('/api/create-meteora-pool', createMeteoraPoolHandler);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

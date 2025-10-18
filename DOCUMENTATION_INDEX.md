@@ -10,6 +10,12 @@ docs/
 ├── TECHNICAL_OVERVIEW.md      # For developers and technical users
 ├── TOKENOMICS_EXAMPLES.md     # Real-world tokenomics configurations
 ├── FAQ.md                     # Common questions and troubleshooting
+├── METEORA_INTEGRATION.md     # Automated pool creation guide (NEW!)
+├── METEORA_TOKEN_REQUIREMENTS.md  # Freeze authority restrictions (NEW!)
+├── METEORA_API_TESTING.md     # API testing results and validation (NEW!)
+├── CUSTOM_REWARD_TOKENS.md    # Jupiter swap integration for reflections
+├── JUPITER_DEVNET_TESTING.md  # DEX testing strategies
+├── DEVNET_LIQUIDITY_TESTING.md # Pool creation walkthrough
 ├── FIXING_UNKNOWN_INSTRUCTIONS.md  # Explorer display issues
 ├── BUILD_NOTES.md             # Anchor build troubleshooting
 └── solana-stack-lock.md       # Toolchain version details

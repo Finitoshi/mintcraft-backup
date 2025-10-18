@@ -16,7 +16,6 @@ import {
   setRpc,
   setPayerFromBytes,
 } from '@orca-so/whirlpools';
-import { address } from '@solana/kit';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -59,6 +58,10 @@ async function main() {
     await setWhirlpoolsConfig('solanaDevnet');
     console.log('✅ SDK configured\n');
 
+    // Convert to PublicKey objects
+    const tokenMintA = new PublicKey(TOKEN_A);
+    const tokenMintB = new PublicKey(TOKEN_B);
+
     console.log('📊 Pool Configuration:');
     console.log(`   Token A: ${TOKEN_A}`);
     console.log(`   Token B: ${TOKEN_B}`);
@@ -71,8 +74,8 @@ async function main() {
 
     const { poolAddress, instructions: createPoolIx, callback: sendCreatePoolTx } = await createSplashPool(
       rpc,
-      address(TOKEN_A),
-      address(TOKEN_B),
+      tokenMintA,  // Use PublicKey object
+      tokenMintB,  // Use PublicKey object
       INITIAL_PRICE,
       wallet
     );

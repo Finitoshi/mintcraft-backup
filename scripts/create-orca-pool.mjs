@@ -8,6 +8,7 @@
 
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import BN from 'bn.js';
 import {
   WhirlpoolContext,
   buildWhirlpoolClient,
@@ -31,9 +32,10 @@ import Decimal from 'decimal.js';
 
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
-// Token configuration
-const TOKEN_A = '2EycdJ8rshabeCSs4dhBZ2tTj6md4rABDcgHbctZPKAN';
-const TOKEN_B = 'B81MRLfcsTL3s4fDGJhhwiv9425tbTLfoMZ4QBWVEGEm';
+// Token configuration (simple tokens without extensions for pool compatibility)
+// Note: Swapped order to match canonical ordering (sorted by pubkey bytes)
+const TOKEN_A = 'JoEXgCw479WmrmgC9Sg9XYRus5EWgZTyH3Y22XsadoA';
+const TOKEN_B = '2QprFJc11wnp2sYp3Psrtoq3BKrxHAnmbgCtJmqnki7b';
 
 // Pool parameters
 const TICK_SPACING = 64; // 0.01% fee tier (standard)
@@ -106,34 +108,38 @@ async function main() {
     // Check if pool already exists
     console.log('Checking if pool exists...');
     const poolAccount = await connection.getAccountInfo(poolPda);
+    let poolCreated = false;
 
     if (poolAccount) {
       console.log('✅ Pool already exists!');
-      console.log(`   Address: ${poolPda.toBase58()}`);
-      console.log('\n💡 You can now test Jupiter swaps through this pool!');
-      return poolPda;
+      console.log(`   Address: ${poolPda.toBase58()}\n`);
+      poolCreated = true;
+    } else {
+      console.log('📝 Pool does not exist, creating new pool...\n');
+      poolCreated = false;
     }
 
-    console.log('📝 Pool does not exist, creating new pool...\n');
+    if (!poolCreated) {
 
-    // Convert price to sqrt price
-    const initialSqrtPrice = PriceMath.priceToSqrtPrice(
+    // Convert price to tick index (for 1:1 price, tick = 0)
+    const initialTick = PriceMath.priceToInitializableTickIndex(
       new Decimal(INITIAL_PRICE),
       9, // Token A decimals
-      9  // Token B decimals
+      9, // Token B decimals
+      TICK_SPACING
     );
 
-    console.log(`   Initial sqrt price: ${initialSqrtPrice.toString()}\n`);
+    console.log(`   Initial tick: ${initialTick}\n`);
 
     // Create pool instruction
     console.log('🏗️  Creating pool...');
 
-    const createPoolTx = await client.createPool(
+    const { poolKey, tx: createPoolTx } = await client.createPool(
       ORCA_WHIRLPOOL_CONFIG,
       tokenMintA,
       tokenMintB,
       TICK_SPACING,
-      initialSqrtPrice,
+      initialTick,
       wallet.publicKey
     );
 
@@ -145,15 +151,17 @@ async function main() {
     console.log('Waiting for confirmation...');
     await connection.confirmTransaction(createPoolSignature, 'confirmed');
     console.log('✅ Pool creation confirmed!\n');
+    }
 
     // Get the whirlpool account
+    console.log('Loading pool data...');
     const whirlpool = await client.getPool(poolPda);
+    console.log('✅ Pool loaded\n');
 
     console.log('📊 Pool Details:');
     console.log(`   Address: ${poolPda.toBase58()}`);
-    console.log(`   Token A Vault: ${whirlpool.getTokenAInfo().vault.toBase58()}`);
-    console.log(`   Token B Vault: ${whirlpool.getTokenBInfo().vault.toBase58()}`);
-    console.log(`   Liquidity: ${whirlpool.getData().liquidity.toString()}\n`);
+    const poolData = whirlpool.getData();
+    console.log(`   Current Liquidity: ${poolData.liquidity.toString()}\n`);
 
     // Now add liquidity
     console.log('💰 Adding Liquidity...\n');
@@ -168,13 +176,14 @@ async function main() {
     console.log(`   Current price: ${currentPrice.toString()}`);
 
     // Calculate tick range (full range for simplicity)
-    const tickLower = -443636; // Min tick for tick spacing 64
-    const tickUpper = 443636;  // Max tick for tick spacing 64
+    // Ticks must be multiples of tick spacing (64)
+    const tickLower = -443584; // -443636 rounded to nearest multiple of 64
+    const tickUpper = 443584;  // 443636 rounded to nearest multiple of 64
 
     console.log(`   Tick range: ${tickLower} to ${tickUpper}`);
 
     // Calculate liquidity quote
-    const inputTokenAmount = DecimalUtil.toU64(LIQUIDITY_AMOUNT, 9);
+    const inputTokenAmount = new BN(LIQUIDITY_AMOUNT.mul(new Decimal(10).pow(9)).floor().toString());
 
     const quote = increaseLiquidityQuoteByInputTokenWithParams({
       tokenMintA: tokenMintA,
@@ -192,8 +201,8 @@ async function main() {
       ),
     });
 
-    console.log(`\n   Token A input: ${DecimalUtil.fromU64(quote.tokenMaxA, 9).toString()}`);
-    console.log(`   Token B input: ${DecimalUtil.fromU64(quote.tokenMaxB, 9).toString()}\n`);
+    console.log(`\n   Token A input: ${new Decimal(quote.tokenMaxA.toString()).div(new Decimal(10).pow(9)).toString()}`);
+    console.log(`   Token B input: ${new Decimal(quote.tokenMaxB.toString()).div(new Decimal(10).pow(9)).toString()}\n`);
 
     // Open position and add liquidity
     console.log('Creating position...');
@@ -218,12 +227,10 @@ async function main() {
     await whirlpool.refreshData();
 
     console.log('═'.repeat(60));
-    console.log('🎉 POOL CREATED SUCCESSFULLY!');
+    console.log('🎉 POOL WITH LIQUIDITY CREATED SUCCESSFULLY!');
     console.log('═'.repeat(60));
     console.log(`\n📍 Pool Address: ${poolPda.toBase58()}`);
-    console.log(`💧 Liquidity: ${whirlpool.getData().liquidity.toString()}`);
-    console.log(`💰 Token A Vault: ${whirlpool.getTokenAInfo().vault.toBase58()}`);
-    console.log(`💰 Token B Vault: ${whirlpool.getTokenBInfo().vault.toBase58()}\n`);
+    console.log(`💧 Total Liquidity: ${whirlpool.getData().liquidity.toString()}\n`);
 
     console.log('✅ Jupiter can now route swaps through this pool!');
     console.log('\n🧪 Test it:');

@@ -13,13 +13,15 @@
     "collect:fees": "node scripts/collect-transfer-fees.mjs",
     "distribute:reflections": "node scripts/distribute-reflections.mjs",
     "setup:devnet-pool": "node scripts/setup-devnet-pool.mjs",
-    "create:orca-pool": "node scripts/create-orca-pool-v2.mjs"
+    "create:orca-pool": "node scripts/create-orca-pool-v2.mjs",
+    "create:meteora-pool": "node scripts/create-meteora-pool.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
     "@hookform/resolvers": "^3.9.0",
     "@jup-ag/api": "^6.0.45",
     "@metaplex-foundation/mpl-token-metadata": "^3.3.0",
+    "@meteora-ag/dlmm": "^1.7.5",
     "@noble/hashes": "^1.5.0",
     "@orca-so/whirlpools": "^4.0.0",
     "@orca-so/whirlpools-sdk": "^0.16.0",

@@ -91,6 +91,19 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
 - **Transfer Hooks**: Custom on-chain validation during transfers
 - **Metaplex Metadata**: On-chain name, symbol, and image
 
+### 🌊 Meteora DLMM Integration (NEW!)
+- **Automated Pool Creation**: Create liquidity pools instantly after token creation
+- **Token-2022 Support**: Full support for tokens with extensions via CLI integration
+- **Jupiter-Ready**: Pools are automatically discovered by Jupiter aggregator for swaps
+- **API Endpoint**: Programmatic pool creation via REST API
+- **Strategic Positioning**: First launchpad with automated Meteora DLMM integration
+
+### 💰 Reflection System
+- **Custom Reward Tokens**: Distribute collected fees in any token (USDC, BONK, etc.)
+- **Jupiter DEX Integration**: Automatic swap from fee token to reward token
+- **Automated Distributions**: Hourly cron job for proportional holder rewards
+- **Configurable**: Minimum holdings, excluded wallets, gas rebates
+
 ### User Experience
 - **One-Click Creation**: Create tokens in under 5 minutes
 - **Client-Side Signing**: Your keys never leave your browser
@@ -112,6 +125,12 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
 - **[Tokenomics Examples](./docs/TOKENOMICS_EXAMPLES.md)** - 7 real-world token models
 - **[FAQ](./docs/FAQ.md)** - 60+ questions answered
 - **[Fixing Unknown Instructions](./docs/FIXING_UNKNOWN_INSTRUCTIONS.md)** - Explorer display issues
+
+### Advanced Features
+- **[Custom Reward Tokens](./docs/CUSTOM_REWARD_TOKENS.md)** - Jupiter swap integration guide
+- **[Meteora Pool Creation](./docs/METEORA_INTEGRATION.md)** - Automated DLMM pool setup
+- **[Jupiter Devnet Testing](./docs/JUPITER_DEVNET_TESTING.md)** - DEX testing strategies
+- **[Devnet Liquidity Testing](./docs/DEVNET_LIQUIDITY_TESTING.md)** - Pool creation walkthrough
 
 ### For Developers
 - **[Technical Overview](./docs/TECHNICAL_OVERVIEW.md)** - Architecture & API documentation

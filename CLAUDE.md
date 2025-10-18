@@ -174,6 +174,62 @@ MintCraft includes an automated reflection distribution system for Token-2022 to
 
 **Documentation:** See `docs/CUSTOM_REWARD_TOKENS.md` for detailed setup guide
 
+### Meteora DLMM Pool Creation
+
+MintCraft includes **automated Meteora DLMM pool creation** via API and CLI integration, positioning it as the first launchpad platform with this capability.
+
+**Architecture:**
+- `meteora-invent/` - Official Meteora CLI toolkit (cloned from GitHub)
+- `api/meteora-pool.js` - Node.js wrapper for CLI integration
+- `POST /api/create-meteora-pool` - REST API endpoint for programmatic pool creation
+
+**Implementation Flow:**
+1. API receives pool creation request with token mint and parameters
+2. Dynamically generates JSONC configuration file
+3. Executes `meteora-invent` CLI via Node.js child process
+4. CLI auto-detects Token-2022 vs SPL Token program
+5. Pool created on Meteora DLMM on-chain program
+6. Response parsed and returned with pool address and transaction hash
+
+**Token-2022 Support:**
+- The `meteora-invent` CLI automatically detects Token-2022 program
+- Supports tokens with extensions (transfer fees, hooks, etc.)
+- Handles proper ATA derivation for Token-2022 mints
+- No SDK version conflicts - CLI handles everything
+
+**API Usage:**
+```javascript
+POST /api/create-meteora-pool
+{
+  "tokenMint": "YOUR_TOKEN_2022_MINT",
+  "quoteMint": "So11111111111111111111111111111111111111112", // SOL
+  "initialPrice": 1.0,
+  "binStep": 25,      // 0.25% bin step
+  "feeBps": 100,      // 1% trading fee
+  "network": "devnet" // or "mainnet-beta"
+}
+```
+
+**CLI Usage (Direct):**
+```bash
+cd meteora-invent/studio
+pnpm dlmm-create-pool --baseMint YOUR_TOKEN_MINT --config ./config/dlmm_config.jsonc
+```
+
+**Testing:**
+- Devnet pools created successfully for both SPL and Token-2022 tokens
+- SPL Pool: `DTja6dMgciDJGoKRAYeHMDh2gxwr7LZsmPYCwnxHrxfa`
+- Token-2022 Pool: `ABqJ8byaJhA9TRGqt3fZxaYaFRnsKn27ToV4Z2ozbJ2U`
+- Test script: `scripts/test-meteora-api.mjs`
+
+**Strategic Impact:**
+- First launchpad with automated Meteora DLMM integration
+- Full Token-2022 support while competitors use legacy SPL tokens
+- Seamless one-click experience from token creation to liquidity
+- Jupiter automatically discovers pools for swap routing
+
+**Documentation:** See `docs/METEORA_INTEGRATION.md` for complete guide
+
 ### IPFS & Metadata
 
 - **API Endpoint**: `POST /api/upload-to-ipfs` handles image and metadata uploads
@@ -216,13 +272,27 @@ MintCraft includes an automated reflection distribution system for Token-2022 to
 - `Anchor.toml`: Anchor configuration with program IDs for localnet/devnet
 
 ### API Server
-- `api/server.js`: Express server with IPFS upload and health check endpoints
+- `api/server.js`: Express server with IPFS upload, Meteora pool creation, and health check endpoints
+- `api/meteora-pool.js`: Meteora DLMM pool creation wrapper (CLI integration)
 - `api/package.json`: Server dependencies
+
+### Meteora Integration
+- `meteora-invent/`: Official Meteora CLI toolkit (cloned from GitHub)
+- `meteora-invent/studio/`: CLI workspace with pool creation actions
+- `meteora-invent/studio/config/`: JSONC configuration files for DLMM pools
 
 ### Scripts
 - `scripts/collect-transfer-fees.mjs`: Node.js script to collect and distribute transfer fees
+- `scripts/distribute-reflections.mjs`: Automated reflection distribution with Jupiter swap support
 - `scripts/install-fee-cron.sh`: Installs cron job for automated fee collection
+- `scripts/install-reflection-cron.sh`: Installs cron job for automated reflection distribution
 - `scripts/collect-fees.env.example`: Template for fee collection configuration
+- `scripts/reflections.env.example`: Template for reflection distribution configuration
+- `scripts/create-meteora-pool.mjs`: Direct SDK pool creation (SPL tokens only)
+- `scripts/create-simple-spl-tokens.mjs`: Create standard SPL tokens for testing
+- `scripts/create-simple-test-tokens.mjs`: Create Token-2022 tokens without extensions
+- `scripts/create-orca-pool.mjs`: Orca Whirlpool creation (legacy)
+- `scripts/test-meteora-api.mjs`: Test Meteora pool creation API endpoint
 - `scripts/fix_build.sh`: Helper to fix Anchor build issues
 - `scripts/upload-idl.sh`: Uploads/updates IDL to Solana so Explorer can decode instructions
 
